@@ -78,6 +78,9 @@ export class Ch1Cryo extends PuzzleSceneBase {
     PixelScene.place(this, 'wallPipes', 200, wallY + 200, 4, { origin: { x: 0.5, y: 0 } });
     PixelScene.place(this, 'wallPipes', GAME_WIDTH - 200, wallY + 200, 4, { origin: { x: 0.5, y: 0 }, flipX: true });
 
+    // === Frost particles drifting down (ambient cryo atmosphere) ===
+    this.spawnFrostParticles();
+
     // === Cryo pods === (3 pods along back wall — center one is the player's, OPEN)
     const podScale = 7;
     const podY = STAGE_BOTTOM_Y - 60; // sit on floor
@@ -96,7 +99,23 @@ export class Ch1Cryo extends PuzzleSceneBase {
 
     // === Computer terminal (right of center, on floor) ===
     const termScale = 7;
-    this.terminalSprite = PixelScene.place(this, 'computerStation1', GAME_WIDTH - 180, STAGE_BOTTOM_Y - 70, termScale, { depth: 6 });
+    const termX = GAME_WIDTH - 180;
+    const termY = STAGE_BOTTOM_Y - 70;
+    this.terminalSprite = PixelScene.place(this, 'computerStation1', termX, termY, termScale, { depth: 6 });
+
+    // Pulsing green halo around the terminal screen — signals "I'm interactive"
+    const halo = this.add.graphics();
+    halo.setDepth(5);
+    halo.fillStyle(0x7fb069, 0.25);
+    halo.fillCircle(termX, termY - 240, 130);
+    this.tweens.add({
+      targets: halo,
+      alpha: { from: 0.7, to: 1.0 },
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     // === Locker (desk substitute) on the left ===
     // Use 'lockerOpen' if items already picked, else 'locker'
@@ -130,6 +149,27 @@ export class Ch1Cryo extends PuzzleSceneBase {
       color: COLORS.hex.skyPale,
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(50);
+  }
+
+  private spawnFrostParticles(): void {
+    // Tiny floating particles to give the room atmosphere
+    for (let i = 0; i < 16; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const y = Math.random() * STAGE_BOTTOM_Y;
+      const size = 2 + Math.random() * 3;
+      const dot = this.add.rectangle(x, y, size, size, 0xa8dadc, 0.7).setDepth(4);
+      const drift = 30 + Math.random() * 60;
+      this.tweens.add({
+        targets: dot,
+        y: y + drift,
+        alpha: { from: 0.7, to: 0.2 },
+        duration: 4000 + Math.random() * 4000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 2000,
+      });
+    }
   }
 
   private drawPhotoFrame(x: number, y: number): Phaser.GameObjects.Container {
