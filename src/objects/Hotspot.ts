@@ -62,19 +62,19 @@ export class Hotspot extends Phaser.GameObjects.Container {
   }
 
   private addIndicator(): void {
-    // Small pulsing dot to telegraph interactability
+    // Small subtle pulsing dot to telegraph interactability
     const dot = this.scene.add.container(0, 0);
-    const ring = this.scene.add.circle(0, 0, 18, COLORS.sunAmber, 0).setStrokeStyle(3, COLORS.sunAmber, 0.95);
-    const inner = this.scene.add.circle(0, 0, 8, COLORS.sunAmber, 0.95);
+    const ring = this.scene.add.circle(0, 0, 14, COLORS.sunAmber, 0).setStrokeStyle(2, COLORS.sunAmber, 0.6);
+    const inner = this.scene.add.circle(0, 0, 5, COLORS.sunAmber, 0.7);
     dot.add([ring, inner]);
     this.add(dot);
     this.indicator = dot;
 
     this.scene.tweens.add({
       targets: ring,
-      scale: { from: 1, to: 1.6 },
-      alpha: { from: 0.95, to: 0 },
-      duration: 1400,
+      scale: { from: 1, to: 2 },
+      alpha: { from: 0.6, to: 0 },
+      duration: 2200,
       repeat: -1,
       ease: 'Sine.easeOut',
     });

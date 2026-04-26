@@ -10,9 +10,9 @@ export interface DialogueOptions {
   autoAdvanceMs?: number;
 }
 
-const BOX_HEIGHT = 360;
-const PADDING = 40;
-const TYPEWRITER_BASE = 22; // ms per char
+const BOX_HEIGHT = 280;
+const PADDING = 36;
+const TYPEWRITER_BASE = 18; // ms per char
 
 export class DialogueBox extends Phaser.GameObjects.Container {
   private bg: Phaser.GameObjects.Rectangle;
@@ -25,7 +25,8 @@ export class DialogueBox extends Phaser.GameObjects.Container {
   private isComplete = false;
 
   constructor(scene: Phaser.Scene) {
-    const yCenter = GAME_HEIGHT / 2 - BOX_HEIGHT / 2 - 200;
+    // Position the dialog low on the scene area so it doesn't cover artwork
+    const yCenter = GAME_HEIGHT - 920;
     super(scene, GAME_WIDTH / 2, yCenter);
 
     this.bg = scene.add.rectangle(0, 0, GAME_WIDTH - 64, BOX_HEIGHT, COLORS.charDeep, 0.92);
@@ -39,12 +40,12 @@ export class DialogueBox extends Phaser.GameObjects.Container {
     });
     this.add(this.speakerLabel);
 
-    this.bodyText = scene.add.text(-(GAME_WIDTH - 64) / 2 + PADDING, -BOX_HEIGHT / 2 + 64, '', {
+    this.bodyText = scene.add.text(-(GAME_WIDTH - 64) / 2 + PADDING, -BOX_HEIGHT / 2 + 56, '', {
       fontFamily: FONTS.body,
-      fontSize: '32px',
+      fontSize: '30px',
       color: COLORS.hex.cream,
       wordWrap: { width: GAME_WIDTH - 64 - 2 * PADDING },
-      lineSpacing: 6,
+      lineSpacing: 4,
     });
     this.add(this.bodyText);
 
