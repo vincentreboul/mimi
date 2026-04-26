@@ -37,27 +37,27 @@ export const FONTS = {
   mono: '"VT323", monospace',                    // diegetic terminals
 } as const;
 
-// HUD layout — touch-first, generous targets (iPhone)
+// HUD layout — touch-first, generous targets (iPhone). Compact to give the scene more height.
 export const HUD = {
-  topBarHeight: 110,
+  topBarHeight: 90,
   // SCUMM verb panel
-  verbPanelHeight: 240,            // 2 rows × 120
-  verbButtonHeight: 110,
-  verbButtonWidth: 510,            // 2 columns: (1080 - gaps) / 2
+  verbPanelHeight: 200,            // 2 rows × 95 + gap
+  verbButtonHeight: 95,
+  verbButtonWidth: 520,            // 2 columns: (1080 - gaps) / 2
   // Action label (current object name)
-  actionLabelHeight: 88,
-  // Inventory
-  inventoryHeight: 220,
-  inventorySlotSize: 160,
+  actionLabelHeight: 56,
+  // Inventory — slightly smaller slots
+  inventoryHeight: 160,
+  inventorySlotSize: 130,
   // Hint button
-  hintButtonSize: 130,
+  hintButtonSize: 120,
   // Hotspot minimums — VERY generous for mobile
-  touchTargetMin: 180,             // ~ 90 pt on iPhone (2× Apple HIG)
-  hotspotMin: 220,                 // even bigger for primary scene objects
+  touchTargetMin: 180,
+  hotspotMin: 220,
 } as const;
 
-// Total HUD bottom block height (verbs + label + inventory + safe area)
-export const HUD_BOTTOM_TOTAL = HUD.actionLabelHeight + HUD.verbPanelHeight + HUD.inventoryHeight + 40;
+// Total HUD bottom block height (action label + verbs + inventory + safe margin)
+export const HUD_BOTTOM_TOTAL = HUD.actionLabelHeight + HUD.verbPanelHeight + HUD.inventoryHeight + 24;
 // Scene area = top of HUD (everything above this is "stage")
 export const STAGE_BOTTOM_Y = GAME_HEIGHT - HUD_BOTTOM_TOTAL;
 

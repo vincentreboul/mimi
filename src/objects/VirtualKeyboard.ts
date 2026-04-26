@@ -16,9 +16,10 @@ const ROWS = [
   ['W', 'X', 'C', 'V', 'B', 'N', 'É', 'È', 'Ç', 'À'],
 ];
 
-const KEY_W = 96;
+// Larger keys + visible gap so adjacent buttons cannot be confused
+const KEY_W = 92;
 const KEY_H = 110;
-const KEY_GAP = 8;
+const KEY_GAP = 14;
 
 /**
  * In-canvas virtual keyboard, AZERTY layout.
@@ -68,10 +69,9 @@ export class VirtualKeyboard extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
     c.add([bg, txt]);
     c.setSize(w, h);
-    // Hit area larger than visual to absorb missed taps + never shrink during animation
-    const hitPad = 12;
+    // Hit area EXACTLY matches visual — no padding to avoid adjacent overlap.
     c.setInteractive(
-      new Phaser.Geom.Rectangle(-w / 2 - hitPad, -h / 2 - hitPad, w + hitPad * 2, h + hitPad * 2),
+      new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
       Phaser.Geom.Rectangle.Contains
     );
     c.on('pointerdown', () => {

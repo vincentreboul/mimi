@@ -58,9 +58,9 @@ export class VerbBar extends Phaser.GameObjects.Container {
     container.add(txt);
 
     container.setSize(HUD.verbButtonWidth, HUD.verbButtonHeight);
-    const hitPad = 8;
+    // Hit area EXACTLY matches visual to avoid adjacent overlap.
     container.setInteractive(
-      new Phaser.Geom.Rectangle(-HUD.verbButtonWidth / 2 - hitPad, -HUD.verbButtonHeight / 2 - hitPad, HUD.verbButtonWidth + hitPad * 2, HUD.verbButtonHeight + hitPad * 2),
+      new Phaser.Geom.Rectangle(-HUD.verbButtonWidth / 2, -HUD.verbButtonHeight / 2, HUD.verbButtonWidth, HUD.verbButtonHeight),
       Phaser.Geom.Rectangle.Contains
     );
     container.on('pointerdown', () => {

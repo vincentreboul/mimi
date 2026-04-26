@@ -156,8 +156,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     c.add([bg, inner, txt]);
     c.setSize(w, h);
-    const hitPad = 12;
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2 - hitPad, -h / 2 - hitPad, w + hitPad * 2, h + hitPad * 2), Phaser.Geom.Rectangle.Contains);
+    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
     c.setDepth(30);
     c.on('pointerdown', () => {
       playSfx('tap');
@@ -284,8 +283,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     c.add([bg, inner, txt]);
     c.setSize(w, h);
-    const hitPad = 10;
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2 - hitPad, -h / 2 - hitPad, w + hitPad * 2, h + hitPad * 2), Phaser.Geom.Rectangle.Contains);
+    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
     c.on('pointerdown', () => {
       playSfx('tap');
       const origColor = bg.fillColor;
