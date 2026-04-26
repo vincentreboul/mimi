@@ -11,60 +11,74 @@ export interface KeypadOptions {
   onCancel?: () => void;
 }
 
-export class Keypad extends Phaser.GameObjects.Container {
+/**
+ * Keypad — modal numeric input.
+ * Uses scene-level Rectangles as interactive (no Container nesting offset).
+ * Each visual is tracked for proper cleanup on destroy().
+ */
+export class Keypad {
   private display: Phaser.GameObjects.Text;
   private current = '';
   private opts: KeypadOptions;
   private feedback: Phaser.GameObjects.Text;
+  private allChildren: Phaser.GameObjects.GameObject[] = [];
+  private scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene, opts: KeypadOptions) {
-    super(scene, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    this.scene = scene;
     this.opts = opts;
 
-    // Backdrop
-    const backdrop = scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.charDeep, 0.92);
-    backdrop.setInteractive();
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const baseDepth = 8000;
+
+    // Backdrop — full-screen, interactive, taps outside cancel
+    const backdrop = scene.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, COLORS.charDeep, 0.92);
+    backdrop.setDepth(baseDepth);
+    backdrop.setInteractive({ useHandCursor: false });
     backdrop.on('pointerdown', () => {
-      // tap outside cancels
       opts.onCancel?.();
       this.destroy();
     });
-    this.add(backdrop);
+    this.allChildren.push(backdrop);
 
-    // Panel
-    const panel = scene.add.rectangle(0, 0, 720, 1100, COLORS.leafDeep, 0.98);
+    // Panel — solid color rect, interactive to absorb taps (so they don't fall through to backdrop)
+    const panel = scene.add.rectangle(cx, cy, 720, 1100, COLORS.leafDeep, 0.98);
     panel.setStrokeStyle(4, COLORS.brass, 1);
-    panel.setInteractive(); // catch taps so backdrop doesn't trigger
-    this.add(panel);
+    panel.setDepth(baseDepth + 1);
+    panel.setInteractive({ useHandCursor: false });
+    // Empty handler — just absorb taps
+    panel.on('pointerdown', () => { /* swallow */ });
+    this.allChildren.push(panel);
 
     // Prompt
-    const prompt = scene.add.text(0, -440, opts.prompt ?? 'Code', {
+    const prompt = scene.add.text(cx, cy - 440, opts.prompt ?? 'Code', {
       fontFamily: FONTS.mono,
       fontSize: '36px',
       color: COLORS.hex.skyPale,
-    }).setOrigin(0.5);
-    this.add(prompt);
+    }).setOrigin(0.5).setDepth(baseDepth + 2);
+    this.allChildren.push(prompt);
 
     // Display
-    this.display = scene.add.text(0, -340, '_'.repeat(opts.digits), {
+    this.display = scene.add.text(cx, cy - 340, '_'.repeat(opts.digits), {
       fontFamily: FONTS.mono,
       fontSize: '96px',
       color: COLORS.hex.cream,
       letterSpacing: 18,
-    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5);
-    this.add(this.display);
+    } as Phaser.Types.GameObjects.Text.TextStyle).setOrigin(0.5).setDepth(baseDepth + 2);
+    this.allChildren.push(this.display);
 
     // Feedback
-    this.feedback = scene.add.text(0, -220, '', {
+    this.feedback = scene.add.text(cx, cy - 220, '', {
       fontFamily: FONTS.body,
       fontSize: '28px',
       color: COLORS.hex.warning,
-    }).setOrigin(0.5);
-    this.add(this.feedback);
+    }).setOrigin(0.5).setDepth(baseDepth + 2);
+    this.allChildren.push(this.feedback);
 
-    // Digit grid
-    const startX = -240;
-    const startY = -100;
+    // Digit grid 1-9
+    const startX = cx - 240;
+    const startY = cy - 100;
     const btnSize = 160;
     const gap = 20;
     for (let i = 0; i < 9; i++) {
@@ -73,46 +87,39 @@ export class Keypad extends Phaser.GameObjects.Container {
       const x = startX + c * (btnSize + gap);
       const y = startY + r * (btnSize + gap);
       const digit = String(i + 1);
-      this.add(this.makeKey(scene, x, y, btnSize, digit, () => this.appendDigit(digit)));
+      this.makeKey(x, y, btnSize, digit, () => this.appendDigit(digit), false, baseDepth + 3);
     }
-    // 0 in center bottom
     const zeroY = startY + 3 * (btnSize + gap);
-    this.add(this.makeKey(scene, 0, zeroY, btnSize, '0', () => this.appendDigit('0')));
-    // Backspace
-    this.add(this.makeKey(scene, startX, zeroY, btnSize, '⌫', () => this.backspace()));
-    // Validate
-    this.add(this.makeKey(scene, startX + 2 * (btnSize + gap), zeroY, btnSize, '✓', () => this.validate(), true));
-
-    scene.add.existing(this);
-    this.setDepth(8000);
-
-    scene.tweens.add({
-      targets: this,
-      alpha: { from: 0, to: 1 },
-      duration: 220,
-    });
+    this.makeKey(cx, zeroY, btnSize, '0', () => this.appendDigit('0'), false, baseDepth + 3);
+    this.makeKey(startX, zeroY, btnSize, '⌫', () => this.backspace(), false, baseDepth + 3);
+    this.makeKey(startX + 2 * (btnSize + gap), zeroY, btnSize, '✓', () => this.validate(), true, baseDepth + 3);
   }
 
-  private makeKey(scene: Phaser.Scene, x: number, y: number, size: number, label: string, onTap: () => void, primary = false): Phaser.GameObjects.Container {
-    const c = scene.add.container(x, y);
+  private makeKey(x: number, y: number, size: number, label: string, onTap: () => void, primary: boolean, depth: number): void {
     const fill = primary ? COLORS.sunAmber : COLORS.brassDark;
-    const bg = scene.add.rectangle(0, 0, size, size, fill, 0.9);
+    const bg = this.scene.add.rectangle(x, y, size, size, fill, 0.95);
     bg.setStrokeStyle(2, COLORS.brass, 1);
-    const t = scene.add.text(0, 0, label, {
+    bg.setDepth(depth);
+    bg.setInteractive({ useHandCursor: true });
+
+    const txt = this.scene.add.text(x, y, label, {
       fontFamily: FONTS.mono,
       fontSize: '64px',
-      color: COLORS.hex.cream,
+      color: primary ? COLORS.hex.charDeep : COLORS.hex.cream,
       fontStyle: 'bold',
-    }).setOrigin(0.5);
-    c.add([bg, t]);
-    c.setSize(size, size);
-    c.setInteractive(new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size), Phaser.Geom.Rectangle.Contains);
-    c.on('pointerdown', () => {
+    }).setOrigin(0.5).setDepth(depth + 1);
+
+    bg.on('pointerdown', () => {
       playSfx('tap');
-      scene.tweens.add({ targets: c, scale: { from: 1, to: 0.92 }, duration: 80, yoyo: true });
+      // Color flash, NOT scale tween (preserves hit area)
+      bg.setFillStyle(COLORS.cream, 1);
+      this.scene.time.delayedCall(80, () => {
+        if (bg.active) bg.setFillStyle(fill, 0.95);
+      });
       onTap();
     });
-    return c;
+
+    this.allChildren.push(bg, txt);
   }
 
   private appendDigit(d: string): void {
@@ -149,14 +156,19 @@ export class Keypad extends Phaser.GameObjects.Container {
       this.feedback.setText('Code incorrect.');
       this.scene.tweens.add({
         targets: this.display,
-        x: { from: -10, to: 10 },
+        x: { from: this.display.x - 10, to: this.display.x + 10 },
         duration: 60,
         yoyo: true,
         repeat: 3,
-        onComplete: () => this.display.setX(0),
+        onComplete: () => this.display.setX(GAME_WIDTH / 2),
       });
       this.current = '';
       this.scene.time.delayedCall(800, () => this.refreshDisplay());
     }
+  }
+
+  destroy(): void {
+    this.allChildren.forEach((c) => c.destroy());
+    this.allChildren = [];
   }
 }

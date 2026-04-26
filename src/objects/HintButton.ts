@@ -19,32 +19,32 @@ export class HintButton extends Phaser.GameObjects.Container {
   private checkTimer: Phaser.Time.TimerEvent;
 
   constructor(scene: Phaser.Scene, options: HintButtonOptions) {
-    // Position: at the right of the inventory bar (replaces unused panel space).
-    // Centered vertically within the inventory strip.
-    super(scene, GAME_WIDTH - HUD.hintButtonSize / 2 - 18, GAME_HEIGHT - HUD.inventoryHeight / 2);
+    super(scene, 0, 0); // Container at origin; we place visuals at WORLD coords
     this.options = options;
 
-    this.bg = scene.add.circle(0, 0, HUD.hintButtonSize / 2, COLORS.brassDark, 0.85);
-    this.bg.setStrokeStyle(3, COLORS.brass, 1);
-    this.add(this.bg);
+    const x = GAME_WIDTH - HUD.hintButtonSize / 2 - 18;
+    const y = GAME_HEIGHT - HUD.inventoryHeight / 2;
 
-    this.label = scene.add.text(0, 0, '?', {
+    // Circle is the interactive — uses its own world bounds (no Container offset)
+    this.bg = scene.add.circle(x, y, HUD.hintButtonSize / 2, COLORS.brassDark, 0.95);
+    this.bg.setStrokeStyle(3, COLORS.brass, 1);
+    this.bg.setDepth(1500);
+    this.bg.setInteractive({ useHandCursor: true });
+
+    this.label = scene.add.text(x, y, '?', {
       fontFamily: FONTS.display,
       fontSize: '52px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.add(this.label);
+    }).setOrigin(0.5).setDepth(1501);
 
-    this.setSize(HUD.hintButtonSize, HUD.hintButtonSize);
-    this.setInteractive(
-      new Phaser.Geom.Circle(0, 0, HUD.hintButtonSize / 2),
-      Phaser.Geom.Circle.Contains
-    );
-    this.on('pointerdown', () => this.onTap());
+    this.bg.on('pointerdown', () => {
+      this.bg.setFillStyle(COLORS.sunAmber, 1);
+      scene.time.delayedCall(120, () => this.bg.setFillStyle(COLORS.brassDark, 0.95));
+      this.onTap();
+    });
 
     scene.add.existing(this);
-    this.setDepth(1500);
 
     // Periodically check stuck-detection to pulse
     this.checkTimer = scene.time.addEvent({
@@ -63,9 +63,10 @@ export class HintButton extends Phaser.GameObjects.Container {
 
   startPulse(): void {
     if (this.pulseTween) return;
+    // Pulse the LABEL not the interactive bg (so hit area never moves)
     this.pulseTween = this.scene.tweens.add({
-      targets: this,
-      scale: { from: 1, to: 1.12 },
+      targets: this.label,
+      scale: { from: 1, to: 1.2 },
       duration: 700,
       yoyo: true,
       repeat: -1,
@@ -77,7 +78,7 @@ export class HintButton extends Phaser.GameObjects.Container {
     if (this.pulseTween) {
       this.pulseTween.stop();
       this.pulseTween = null;
-      this.setScale(1);
+      this.label.setScale(1);
     }
   }
 

@@ -141,31 +141,28 @@ export class MenuScene extends Phaser.Scene {
     g.fillCircle(width / 2, 350, 500);
   }
 
-  private bigButton(x: number, y: number, label: string, onTap: () => void): Phaser.GameObjects.Container {
+  private bigButton(x: number, y: number, label: string, onTap: () => void): Phaser.GameObjects.Rectangle {
     const w = 720;
     const h = 140;
-    const c = this.add.container(x, y);
-    const bg = this.add.rectangle(0, 0, w, h, COLORS.brassDark, 0.95);
+    // Rectangle is the interactive (CTO pattern, no Container offset bug)
+    const bg = this.add.rectangle(x, y, w, h, COLORS.brassDark, 0.95);
     bg.setStrokeStyle(4, COLORS.brass, 1);
-    // Inner highlight (looks like pixel-art panel)
-    const inner = this.add.rectangle(0, -h / 2 + 6, w - 12, 4, COLORS.brass, 0.7);
-    const txt = this.add.text(0, 0, label, {
+    bg.setDepth(30);
+    bg.setInteractive({ useHandCursor: true });
+    // Inner pixel-art highlight
+    this.add.rectangle(x, y - h / 2 + 6, w - 12, 4, COLORS.brass, 0.7).setDepth(31);
+    this.add.text(x, y, label, {
       fontFamily: FONTS.body,
       fontSize: '44px',
       color: COLORS.hex.cream,
-    }).setOrigin(0.5);
-    c.add([bg, inner, txt]);
-    c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
-    c.setDepth(30);
-    c.on('pointerdown', () => {
+    }).setOrigin(0.5).setDepth(32);
+    bg.on('pointerdown', () => {
       playSfx('tap');
-      const origColor = bg.fillColor;
       bg.setFillStyle(COLORS.sunAmber, 1);
-      this.time.delayedCall(80, () => bg.setFillStyle(origColor, 0.95));
+      this.time.delayedCall(80, () => bg.setFillStyle(COLORS.brassDark, 0.95));
       this.time.delayedCall(120, onTap);
     });
-    return c;
+    return bg;
   }
 
   private openSettings(): void {
@@ -196,7 +193,7 @@ export class MenuScene extends Phaser.Scene {
       ['normal', 'NORMAL'],
       ['plus', 'PLUS'],
     ];
-    const hintBtns: Phaser.GameObjects.Container[] = [];
+    const hintBtns: Phaser.GameObjects.Rectangle[] = [];
     hintLevels.forEach(([lvl, label], i) => {
       const x = width / 2 + (i - 1) * 280;
       const btn = this.smallButton(x, y, 250, 100, label, () => {
@@ -204,7 +201,6 @@ export class MenuScene extends Phaser.Scene {
         this.refreshToggles(hintBtns, hintLevels.map(([l]) => l), lvl);
       });
       hintBtns.push(btn);
-      overlay.add(btn);
     });
     this.refreshToggles(hintBtns, hintLevels.map(([l]) => l), settings.hintLevel);
 
@@ -217,7 +213,7 @@ export class MenuScene extends Phaser.Scene {
     y += 90;
 
     const fonts: Array<['inter' | 'atkinson', string]> = [['inter', 'PIXEL'], ['atkinson', 'ATKINSON']];
-    const fontBtns: Phaser.GameObjects.Container[] = [];
+    const fontBtns: Phaser.GameObjects.Rectangle[] = [];
     fonts.forEach(([f, label], i) => {
       const x = width / 2 + (i - 0.5) * 380;
       const btn = this.smallButton(x, y, 350, 100, label, () => {
@@ -225,19 +221,18 @@ export class MenuScene extends Phaser.Scene {
         this.refreshToggles(fontBtns, fonts.map(([k]) => k), f);
       });
       fontBtns.push(btn);
-      overlay.add(btn);
     });
     this.refreshToggles(fontBtns, fonts.map(([k]) => k), settings.font);
 
     y += 200;
-    const motionLabel = settings.reducedMotion ? 'ANIMATIONS RÉDUITES ✓' : 'ANIMATIONS RÉDUITES';
-    const motionBtn = this.smallButton(width / 2, y, 600, 110, motionLabel, () => {
+    // Motion toggle (no label-swap to avoid getAt complexity — just shows current state on hover)
+    this.smallButton(width / 2, y, 600, 110, settings.reducedMotion ? 'ANIMATIONS RÉDUITES ✓' : 'ANIMATIONS RÉDUITES', () => {
       const cur = getSettings().reducedMotion;
       setSetting('reducedMotion', !cur);
-      const t2 = motionBtn.getAt(2) as Phaser.GameObjects.Text;
-      t2.setText(!cur ? 'ANIMATIONS RÉDUITES ✓' : 'ANIMATIONS RÉDUITES');
+      // Re-open settings to refresh
+      overlay.destroy();
+      this.openSettings();
     });
-    overlay.add(motionBtn);
 
     y += 180;
     const resetBtn = this.smallButton(width / 2, y, 600, 110, 'RECOMMENCER', () => {
@@ -247,51 +242,42 @@ export class MenuScene extends Phaser.Scene {
         this.fadeTo('PlayerSetupScene');
       });
     });
-    (resetBtn.getAt(0) as Phaser.GameObjects.Rectangle).setFillStyle(COLORS.warning, 0.85);
-    overlay.add(resetBtn);
+    resetBtn.setFillStyle(COLORS.warning, 0.85);
 
-    overlay.add(this.bigButton(width / 2, height - 200, 'RETOUR', () => overlay.destroy()));
+    this.bigButton(width / 2, height - 200, 'RETOUR', () => overlay.destroy());
   }
 
-  private refreshToggles<T>(buttons: Phaser.GameObjects.Container[], values: T[], selected: T): void {
-    buttons.forEach((btn, i) => {
-      const bg = btn.getAt(0) as Phaser.GameObjects.Rectangle;
-      const txt = btn.getAt(2) as Phaser.GameObjects.Text;
+  private refreshToggles<T>(buttons: Phaser.GameObjects.Rectangle[], values: T[], selected: T): void {
+    buttons.forEach((bg, i) => {
       if (values[i] === selected) {
         bg.setFillStyle(COLORS.sunAmber, 1);
         bg.setStrokeStyle(4, COLORS.cream, 1);
-        txt.setColor(COLORS.hex.charDeep);
       } else {
         bg.setFillStyle(COLORS.brassDark, 0.95);
         bg.setStrokeStyle(3, COLORS.brass, 1);
-        txt.setColor(COLORS.hex.cream);
       }
     });
   }
 
-  private smallButton(x: number, y: number, w: number, h: number, label: string, onTap: () => void): Phaser.GameObjects.Container {
-    const c = this.add.container(x, y);
-    const bg = this.add.rectangle(0, 0, w, h, COLORS.brassDark, 0.95);
+  private smallButton(x: number, y: number, w: number, h: number, label: string, onTap: () => void): Phaser.GameObjects.Rectangle {
+    const bg = this.add.rectangle(x, y, w, h, COLORS.brassDark, 0.95);
     bg.setStrokeStyle(3, COLORS.brass, 1);
-    const inner = this.add.rectangle(0, -h / 2 + 4, w - 8, 3, COLORS.brass, 0.7);
-    const txt = this.add.text(0, 0, label, {
+    bg.setInteractive({ useHandCursor: true });
+    this.add.rectangle(x, y - h / 2 + 4, w - 8, 3, COLORS.brass, 0.7);
+    this.add.text(x, y, label, {
       fontFamily: FONTS.body,
       fontSize: '32px',
       color: COLORS.hex.cream,
       align: 'center',
       wordWrap: { width: w - 24 },
     }).setOrigin(0.5);
-    c.add([bg, inner, txt]);
-    c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
-    c.on('pointerdown', () => {
+    bg.on('pointerdown', () => {
       playSfx('tap');
-      const origColor = bg.fillColor;
       bg.setFillStyle(COLORS.sunAmber, 1);
-      this.time.delayedCall(70, () => bg.setFillStyle(origColor, 0.95));
+      this.time.delayedCall(70, () => bg.setFillStyle(COLORS.brassDark, 0.95));
       this.time.delayedCall(110, onTap);
     });
-    return c;
+    return bg;
   }
 
   private showConfirm(message: string, onYes: () => void): void {

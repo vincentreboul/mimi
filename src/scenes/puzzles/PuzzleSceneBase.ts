@@ -46,27 +46,26 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
     });
     top.add(label);
 
-    // Menu button (top-right)
-    const menuBtn = this.add.container(GAME_WIDTH - 100, HUD.topBarHeight / 2);
-    const menuBg = this.add.rectangle(0, 0, 140, 80, COLORS.brassDark, 0.95);
+    // Menu button (top-right) — Rectangle as direct interactive (no Container offset bug)
+    const menuX = GAME_WIDTH - 100;
+    const menuY = HUD.topBarHeight / 2;
+    const menuBg = this.add.rectangle(menuX, menuY, 140, 80, COLORS.brassDark, 0.95).setDepth(901);
     menuBg.setStrokeStyle(2, COLORS.brass, 1);
-    const menuTxt = this.add.text(0, 0, 'MENU', {
+    menuBg.setInteractive({ useHandCursor: true });
+    this.add.text(menuX, menuY, 'MENU', {
       fontFamily: FONTS.body,
       fontSize: '28px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
-    }).setOrigin(0.5);
-    menuBtn.add([menuBg, menuTxt]);
-    menuBtn.setSize(140, 80);
-    menuBtn.setInteractive(new Phaser.Geom.Rectangle(-70, -40, 140, 80), Phaser.Geom.Rectangle.Contains);
-    menuBtn.on('pointerdown', () => {
+    }).setOrigin(0.5).setDepth(902);
+    menuBg.on('pointerdown', () => {
+      menuBg.setFillStyle(COLORS.sunAmber, 1);
       this.cameras.main.fadeOut(300, 31, 77, 62);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         stopAmbient();
         this.scene.start('MenuScene');
       });
     });
-    top.add(menuBtn);
 
     // HUD components (order matters for depth)
     this.dialogue = new DialogueBox(this);
