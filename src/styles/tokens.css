@@ -18,10 +18,10 @@
   --highlight: var(--sun-amber);
   --link: var(--sky-pale);
 
-  /* Typography */
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Fraunces', 'Inter', serif;
-  --font-mono: 'Space Mono', ui-monospace, monospace;
+  /* Typography — pixel-art aware */
+  --font-body: 'Pixelify Sans', 'VT323', monospace;
+  --font-display: 'Press Start 2P', 'VT323', monospace;
+  --font-mono: 'VT323', monospace;
 
   /* Sizing (mobile-first) */
   --touch-min: 48px;

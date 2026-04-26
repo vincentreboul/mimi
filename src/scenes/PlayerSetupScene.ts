@@ -3,15 +3,18 @@ import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { t } from '../systems/narrative';
 import { setPlayer, type AgeBracket, type Gender } from '../systems/save';
 import { playSfx } from '../systems/audio';
+import { VirtualKeyboard } from '../objects/VirtualKeyboard';
+
+const STEPS = ['name', 'age', 'gender', 'confirm'] as const;
+type Step = typeof STEPS[number];
 
 export class PlayerSetupScene extends Phaser.Scene {
-  private nameInput?: HTMLInputElement;
-  private domEl?: Phaser.GameObjects.DOMElement;
-  private selectedAge: AgeBracket = 'teen';
-  private selectedGender: Gender = 'nb';
-  private startBtn?: Phaser.GameObjects.Container;
-  private ageBtns: Map<AgeBracket, Phaser.GameObjects.Container> = new Map();
-  private genderBtns: Map<Gender, Phaser.GameObjects.Container> = new Map();
+  private step: Step = 'name';
+  private name = '';
+  private age: AgeBracket = 'teen';
+  private gender: Gender = 'nb';
+  private contentLayer?: Phaser.GameObjects.Container;
+  private nameDisplay?: Phaser.GameObjects.Text;
 
   constructor() {
     super('PlayerSetupScene');
@@ -19,66 +22,104 @@ export class PlayerSetupScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.fadeIn(400, 31, 77, 62);
-    const { width, height } = this.scale.gameSize;
+    this.drawBackground();
+    this.renderStep();
+  }
 
-    // Background
+  private drawBackground(): void {
+    const { width, height } = this.scale.gameSize;
+    // Pixel art background using sci-fi wall sprites if loaded
     const g = this.add.graphics();
-    g.fillGradientStyle(0x1f4d3e, 0x1f4d3e, 0x0d2620, 0x0d2620, 1, 1, 1, 1);
+    g.fillStyle(0x0d2230, 1);
     g.fillRect(0, 0, width, height);
 
-    // Title
-    this.add.text(width / 2, 200, t('setup.title'), {
+    // Stars
+    g.fillStyle(0xf4e9d8, 0.9);
+    for (let i = 0; i < 60; i++) {
+      g.fillRect(Math.random() * width, Math.random() * height * 0.5, 2, 2);
+    }
+
+    // Distant Earth glow
+    g.fillStyle(0xa8dadc, 0.18);
+    g.fillCircle(width / 2, 350, 280);
+    g.fillStyle(0x7fb069, 0.25);
+    g.fillCircle(width / 2 - 40, 320, 140);
+
+    // Title bar
+    this.add.text(width / 2, 180, 'KORA', {
       fontFamily: FONTS.display,
-      fontSize: '72px',
+      fontSize: '120px',
+      color: COLORS.hex.cream,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(10);
+
+    this.add.text(width / 2, 280, 'L\'éveil orbital', {
+      fontFamily: FONTS.mono,
+      fontSize: '32px',
+      color: COLORS.hex.brass,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(10);
+  }
+
+  private renderStep(): void {
+    if (this.contentLayer) this.contentLayer.destroy();
+    this.contentLayer = this.add.container(0, 0);
+    this.contentLayer.setDepth(20);
+
+    switch (this.step) {
+      case 'name': this.renderNameStep(); break;
+      case 'age': this.renderAgeStep(); break;
+      case 'gender': this.renderGenderStep(); break;
+      case 'confirm': this.start(); break;
+    }
+  }
+
+  private renderNameStep(): void {
+    const { width } = this.scale.gameSize;
+    this.contentLayer!.add(this.label(width / 2, 460, t('setup.name_label')));
+
+    // Name display box (big)
+    const boxY = 580;
+    const boxW = 720;
+    const boxH = 130;
+    const bg = this.add.rectangle(width / 2, boxY, boxW, boxH, COLORS.charDeep, 0.98);
+    bg.setStrokeStyle(4, COLORS.brass, 1);
+    this.contentLayer!.add(bg);
+
+    this.nameDisplay = this.add.text(width / 2, boxY, '_', {
+      fontFamily: FONTS.display,
+      fontSize: '64px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
     }).setOrigin(0.5);
+    this.contentLayer!.add(this.nameDisplay);
 
-    // === Name input ===
-    let y = 380;
-    this.add.text(width / 2, y, t('setup.name_label'), {
-      fontFamily: FONTS.body,
-      fontSize: '36px',
-      color: COLORS.hex.brass,
-    }).setOrigin(0.5);
-
-    y += 80;
-    // DOM input element overlay
-    this.nameInput = document.createElement('input');
-    this.nameInput.type = 'text';
-    this.nameInput.placeholder = t('setup.name_placeholder');
-    this.nameInput.maxLength = 20;
-    this.nameInput.autocapitalize = 'words';
-    this.nameInput.autocomplete = 'off';
-    this.nameInput.style.cssText = `
-      width: 720px;
-      height: 90px;
-      padding: 0 24px;
-      font-size: 40px;
-      font-family: 'Inter', sans-serif;
-      color: #f4e9d8;
-      background: #1a1f1a;
-      border: 3px solid #d4a373;
-      border-radius: 8px;
-      text-align: center;
-      caret-color: #f4a261;
-      outline: none;
-    `;
-    this.nameInput.addEventListener('input', () => this.refreshStartButton());
-    this.nameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && this.canStart()) this.start();
+    // Virtual keyboard (centered)
+    const keyboardY = 800;
+    const kb = new VirtualKeyboard(this, {
+      x: width / 2,
+      y: keyboardY,
+      maxLength: 12,
+      onChange: (v) => {
+        this.name = v;
+        this.nameDisplay!.setText(v.length > 0 ? v : '_');
+      },
+      onSubmit: (v) => {
+        if (v.length >= 1) {
+          playSfx('success');
+          this.step = 'age';
+          this.renderStep();
+        }
+      },
     });
-    this.domEl = this.add.dom(width / 2, y + 45, this.nameInput);
+    this.contentLayer!.add(kb);
+  }
 
-    // === Age picker ===
-    y += 200;
-    this.add.text(width / 2, y, t('setup.age_label'), {
-      fontFamily: FONTS.body,
-      fontSize: '36px',
-      color: COLORS.hex.brass,
-    }).setOrigin(0.5);
+  private renderAgeStep(): void {
+    const { width } = this.scale.gameSize;
+    this.contentLayer!.add(this.label(width / 2, 460, `Bonjour, ${this.name}.`));
+    this.contentLayer!.add(this.label(width / 2, 540, t('setup.age_label'), true));
 
-    y += 80;
     const ages: Array<[AgeBracket, string]> = [
       ['kid', t('setup.age_kid')],
       ['teen', t('setup.age_teen')],
@@ -86,150 +127,78 @@ export class PlayerSetupScene extends Phaser.Scene {
       ['adult', t('setup.age_adult')],
       ['senior', t('setup.age_senior')],
     ];
-    const ageBtnW = 280;
-    const ageBtnH = 90;
-    const ageGap = 16;
-    // 2 rows: 3 + 2
-    const row1 = ages.slice(0, 3);
-    const row2 = ages.slice(3);
-    const row1W = row1.length * ageBtnW + (row1.length - 1) * ageGap;
-    const row2W = row2.length * ageBtnW + (row2.length - 1) * ageGap;
-    row1.forEach(([key, label], i) => {
-      const x = (width - row1W) / 2 + i * (ageBtnW + ageGap) + ageBtnW / 2;
-      const btn = this.makeBigToggle(x, y, ageBtnW, ageBtnH, label, () => {
-        this.selectedAge = key;
-        this.refreshAgeButtons();
-      });
-      this.ageBtns.set(key, btn);
-    });
-    row2.forEach(([key, label], i) => {
-      const x = (width - row2W) / 2 + i * (ageBtnW + ageGap) + ageBtnW / 2;
-      const btn = this.makeBigToggle(x, y + ageBtnH + ageGap, ageBtnW, ageBtnH, label, () => {
-        this.selectedAge = key;
-        this.refreshAgeButtons();
-      });
-      this.ageBtns.set(key, btn);
-    });
-    this.refreshAgeButtons();
 
-    // === Gender picker ===
-    y += 280;
-    this.add.text(width / 2, y, 'Tu es...', {
-      fontFamily: FONTS.body,
-      fontSize: '36px',
-      color: COLORS.hex.brass,
-    }).setOrigin(0.5);
+    let y = 700;
+    ages.forEach(([key, label], i) => {
+      const btn = this.bigBtn(width / 2, y + i * 140, 700, 120, label, () => {
+        this.age = key;
+        playSfx('success');
+        this.step = 'gender';
+        this.renderStep();
+      });
+      this.contentLayer!.add(btn);
+    });
+  }
 
-    y += 80;
+  private renderGenderStep(): void {
+    const { width } = this.scale.gameSize;
+    this.contentLayer!.add(this.label(width / 2, 500, 'Tu es...', true));
+
     const genders: Array<[Gender, string]> = [
-      ['f', 'une fille'],
-      ['m', 'un garçon'],
-      ['nb', 'autre / non-binaire'],
+      ['f', 'Une fille'],
+      ['m', 'Un garçon'],
+      ['nb', 'Autre / non-binaire'],
     ];
-    const gW = 280;
-    const gH = 90;
-    const gGap = 16;
-    const totalGW = genders.length * gW + (genders.length - 1) * gGap;
+
+    let y = 660;
     genders.forEach(([key, label], i) => {
-      const x = (width - totalGW) / 2 + i * (gW + gGap) + gW / 2;
-      const btn = this.makeBigToggle(x, y, gW, gH, label, () => {
-        this.selectedGender = key;
-        this.refreshGenderButtons();
+      const btn = this.bigBtn(width / 2, y + i * 160, 700, 130, label, () => {
+        this.gender = key;
+        playSfx('success');
+        this.step = 'confirm';
+        this.renderStep();
       });
-      this.genderBtns.set(key, btn);
+      this.contentLayer!.add(btn);
     });
-    this.refreshGenderButtons();
 
-    // === Privacy note ===
-    y += 160;
-    this.add.text(width / 2, y, t('setup.privacy'), {
-      fontFamily: FONTS.body,
-      fontSize: '20px',
-      color: COLORS.hex.skyPale,
-      fontStyle: 'italic',
-      align: 'center',
-      wordWrap: { width: width - 200 },
-    }).setOrigin(0.5);
-
-    // === Start button ===
-    this.startBtn = this.makeBigToggle(width / 2, height - 200, 600, 120, t('setup.start'), () => {
-      if (this.canStart()) this.start();
-    });
-    this.refreshStartButton();
-  }
-
-  private refreshAgeButtons(): void {
-    this.ageBtns.forEach((btn, key) => {
-      const bg = btn.getAt(0) as Phaser.GameObjects.Rectangle;
-      const txt = btn.getAt(1) as Phaser.GameObjects.Text;
-      if (key === this.selectedAge) {
-        bg.setFillStyle(COLORS.sunAmber, 1);
-        bg.setStrokeStyle(4, COLORS.cream, 1);
-        txt.setColor(COLORS.hex.charDeep);
-      } else {
-        bg.setFillStyle(COLORS.brassDark, 0.95);
-        bg.setStrokeStyle(2, COLORS.brass, 0.8);
-        txt.setColor(COLORS.hex.cream);
-      }
-    });
-  }
-
-  private refreshGenderButtons(): void {
-    this.genderBtns.forEach((btn, key) => {
-      const bg = btn.getAt(0) as Phaser.GameObjects.Rectangle;
-      const txt = btn.getAt(1) as Phaser.GameObjects.Text;
-      if (key === this.selectedGender) {
-        bg.setFillStyle(COLORS.sunAmber, 1);
-        bg.setStrokeStyle(4, COLORS.cream, 1);
-        txt.setColor(COLORS.hex.charDeep);
-      } else {
-        bg.setFillStyle(COLORS.brassDark, 0.95);
-        bg.setStrokeStyle(2, COLORS.brass, 0.8);
-        txt.setColor(COLORS.hex.cream);
-      }
-    });
-  }
-
-  private refreshStartButton(): void {
-    if (!this.startBtn) return;
-    const bg = this.startBtn.getAt(0) as Phaser.GameObjects.Rectangle;
-    const txt = this.startBtn.getAt(1) as Phaser.GameObjects.Text;
-    if (this.canStart()) {
-      bg.setFillStyle(COLORS.sunAmber, 1);
-      bg.setStrokeStyle(4, COLORS.cream, 1);
-      txt.setColor(COLORS.hex.charDeep);
-    } else {
-      bg.setFillStyle(COLORS.brassDark, 0.4);
-      bg.setStrokeStyle(2, COLORS.brass, 0.4);
-      txt.setColor(COLORS.hex.cream);
-    }
-  }
-
-  private canStart(): boolean {
-    return (this.nameInput?.value?.trim().length ?? 0) >= 1;
+    // Back button
+    const back = this.bigBtn(width / 2, y + 3 * 160 + 60, 320, 100, '← Retour', () => {
+      this.step = 'age';
+      this.renderStep();
+    }, 'secondary');
+    this.contentLayer!.add(back);
   }
 
   private start(): void {
-    if (!this.canStart()) return;
-    playSfx('success');
-    setPlayer(this.nameInput!.value.trim(), this.selectedAge, this.selectedGender);
-    this.cameras.main.fadeOut(400, 31, 77, 62);
+    setPlayer(this.name, this.age, this.gender);
+    this.cameras.main.fadeOut(500, 31, 77, 62);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('MenuScene');
     });
   }
 
-  private makeBigToggle(x: number, y: number, w: number, h: number, label: string, onTap: () => void): Phaser.GameObjects.Container {
+  private label(x: number, y: number, text: string, small = false): Phaser.GameObjects.Text {
+    return this.add.text(x, y, text, {
+      fontFamily: FONTS.body,
+      fontSize: small ? '40px' : '48px',
+      color: small ? COLORS.hex.brass : COLORS.hex.cream,
+      fontStyle: small ? 'normal' : 'bold',
+      align: 'center',
+    }).setOrigin(0.5);
+  }
+
+  private bigBtn(x: number, y: number, w: number, h: number, label: string, onTap: () => void, kind: 'primary' | 'secondary' = 'primary'): Phaser.GameObjects.Container {
     const c = this.add.container(x, y);
-    const bg = this.add.rectangle(0, 0, w, h, COLORS.brassDark, 0.95);
-    bg.setStrokeStyle(2, COLORS.brass, 0.8);
+    const fill = kind === 'primary' ? COLORS.brassDark : COLORS.charDeep;
+    const bg = this.add.rectangle(0, 0, w, h, fill, 0.95);
+    bg.setStrokeStyle(4, COLORS.brass, 1);
     const txt = this.add.text(0, 0, label, {
       fontFamily: FONTS.body,
-      fontSize: '32px',
+      fontSize: '40px',
       color: COLORS.hex.cream,
-      fontStyle: '600',
+      fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: w - 16 },
+      wordWrap: { width: w - 40 },
     }).setOrigin(0.5);
     c.add([bg, txt]);
     c.setSize(w, h);

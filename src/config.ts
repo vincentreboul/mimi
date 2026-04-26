@@ -30,10 +30,11 @@ export const COLORS = {
   },
 } as const;
 
+// Pixel-art typography — VT323 readable body, Press Start 2P iconic display
 export const FONTS = {
-  body: 'Inter, system-ui, sans-serif',
-  display: 'Fraunces, serif',
-  mono: 'Space Mono, monospace',
+  body: '"Pixelify Sans", "VT323", monospace',  // pixel-art readable for UI
+  display: '"Press Start 2P", "VT323", monospace', // iconic retro arcade for titles
+  mono: '"VT323", monospace',                    // diegetic terminals
 } as const;
 
 // HUD layout — touch-first, generous targets (iPhone)
