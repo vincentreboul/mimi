@@ -58,6 +58,20 @@ if (import.meta.env.DEV) {
   (window as any).Phaser = Phaser;
 }
 
+// Native audio unlock on first user interaction (more reliable than Phaser-only)
+import { unlockAudio } from './systems/audio';
+const unlockOnce = () => {
+  unlockAudio();
+  document.removeEventListener('touchstart', unlockOnce);
+  document.removeEventListener('touchend', unlockOnce);
+  document.removeEventListener('mousedown', unlockOnce);
+  document.removeEventListener('keydown', unlockOnce);
+};
+document.addEventListener('touchstart', unlockOnce, { once: false });
+document.addEventListener('touchend', unlockOnce, { once: false });
+document.addEventListener('mousedown', unlockOnce, { once: false });
+document.addEventListener('keydown', unlockOnce, { once: false });
+
 // Pause/resume audio on tab visibility change (iOS Safari fix)
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {

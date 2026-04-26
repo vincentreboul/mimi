@@ -10,9 +10,9 @@ export interface DialogueOptions {
   autoAdvanceMs?: number;
 }
 
-const BOX_HEIGHT = 280;
-const PADDING = 36;
-const TYPEWRITER_BASE = 18; // ms per char
+const BOX_HEIGHT = 360;
+const PADDING = 40;
+const TYPEWRITER_BASE = 16; // ms per char
 
 export class DialogueBox extends Phaser.GameObjects.Container {
   private bg: Phaser.GameObjects.Rectangle;
@@ -35,23 +35,24 @@ export class DialogueBox extends Phaser.GameObjects.Container {
 
     this.speakerLabel = scene.add.text(-GAME_WIDTH / 2 + 64, -BOX_HEIGHT / 2 + 16, '', {
       fontFamily: FONTS.mono,
-      fontSize: '24px',
+      fontSize: '30px',
       color: COLORS.hex.skyPale,
+      fontStyle: 'bold',
     });
     this.add(this.speakerLabel);
 
-    this.bodyText = scene.add.text(-(GAME_WIDTH - 64) / 2 + PADDING, -BOX_HEIGHT / 2 + 56, '', {
+    this.bodyText = scene.add.text(-(GAME_WIDTH - 64) / 2 + PADDING, -BOX_HEIGHT / 2 + 60, '', {
       fontFamily: FONTS.body,
-      fontSize: '30px',
+      fontSize: '42px',
       color: COLORS.hex.cream,
       wordWrap: { width: GAME_WIDTH - 64 - 2 * PADDING },
-      lineSpacing: 4,
+      lineSpacing: 8,
     });
     this.add(this.bodyText);
 
-    this.hint = scene.add.text(0, BOX_HEIGHT / 2 - 32, '▼ tape pour continuer', {
-      fontFamily: FONTS.body,
-      fontSize: '20px',
+    this.hint = scene.add.text(0, BOX_HEIGHT / 2 - 36, '▼ TAPE POUR CONTINUER ▼', {
+      fontFamily: FONTS.mono,
+      fontSize: '26px',
       color: COLORS.hex.skyPale,
     }).setOrigin(0.5);
     this.hint.setAlpha(0);

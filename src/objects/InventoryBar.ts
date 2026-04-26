@@ -24,11 +24,14 @@ export class InventoryBar extends Phaser.GameObjects.Container {
     this.add(this.bg);
 
     const slotW = HUD.inventorySlotSize;
-    const totalW = MAX_SLOTS * slotW + (MAX_SLOTS - 1) * 14;
-    const startX = (GAME_WIDTH - totalW) / 2 + slotW / 2;
+    // Reserve right space for hint button (120 + 36 padding)
+    const rightReserved = 156;
+    const availW = GAME_WIDTH - rightReserved;
+    const totalW = MAX_SLOTS * slotW + (MAX_SLOTS - 1) * 12;
+    const startX = (availW - totalW) / 2 + slotW / 2;
 
     for (let i = 0; i < MAX_SLOTS; i++) {
-      const x = startX + i * (slotW + 14);
+      const x = startX + i * (slotW + 12);
       const slot = this.createSlot(scene, x, HUD.inventoryHeight / 2);
       this.slots.push(slot);
       this.add(slot);

@@ -12,7 +12,7 @@
   --warning: #c0392b;
 
   /* Semantic */
-  --bg: var(--leaf-deep);
+  --bg: #0a1218;            /* deep space — matches Phaser canvas bg, hides letterbox */
   --fg: var(--cream);
   --accent: var(--brass);
   --highlight: var(--sun-amber);
@@ -50,12 +50,14 @@ html, body {
 }
 
 #game {
-  width: 100%;
+  /* Fill the screen entirely. Safe-area handled inside the canvas (HUD has top/bottom margin). */
+  width: 100vw;
   height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: 0;
+  margin: 0;
 }
 
 #game canvas {

@@ -19,7 +19,9 @@ export class HintButton extends Phaser.GameObjects.Container {
   private checkTimer: Phaser.Time.TimerEvent;
 
   constructor(scene: Phaser.Scene, options: HintButtonOptions) {
-    super(scene, GAME_WIDTH - HUD.hintButtonSize / 2 - 24, GAME_HEIGHT - HUD.inventoryHeight - HUD.hintButtonSize / 2 - 48);
+    // Position: at the right of the inventory bar (replaces unused panel space).
+    // Centered vertically within the inventory strip.
+    super(scene, GAME_WIDTH - HUD.hintButtonSize / 2 - 18, GAME_HEIGHT - HUD.inventoryHeight / 2);
     this.options = options;
 
     this.bg = scene.add.circle(0, 0, HUD.hintButtonSize / 2, COLORS.brassDark, 0.85);
@@ -137,20 +139,19 @@ class HintModal extends Phaser.GameObjects.Container {
     // Title
     const title = scene.add.text(0, -300, t('ui.hint'), {
       fontFamily: FONTS.display,
-      fontSize: '52px',
+      fontSize: '60px',
       color: COLORS.hex.brass,
-      fontStyle: 'bold',
     }).setOrigin(0.5);
     this.add(title);
 
-    // Hint text
+    // Hint text — large for readability
     this.hintText = scene.add.text(0, -50, '...', {
       fontFamily: FONTS.body,
-      fontSize: '34px',
+      fontSize: '44px',
       color: COLORS.hex.cream,
-      wordWrap: { width: GAME_WIDTH - 200 },
+      wordWrap: { width: GAME_WIDTH - 220 },
       align: 'center',
-      lineSpacing: 8,
+      lineSpacing: 12,
     }).setOrigin(0.5);
     this.add(this.hintText);
 
@@ -211,21 +212,24 @@ class HintModal extends Phaser.GameObjects.Container {
 
   private makeButton(scene: Phaser.Scene, x: number, y: number, label: string, onTap: () => void): Phaser.GameObjects.Container {
     const c = scene.add.container(x, y);
-    const bg = scene.add.rectangle(0, 0, 380, 70, COLORS.brassDark, 0.95);
-    bg.setStrokeStyle(2, COLORS.brass, 1);
+    const bg = scene.add.rectangle(0, 0, 480, 90, COLORS.brassDark, 0.95);
+    bg.setStrokeStyle(3, COLORS.brass, 1);
     const txt = scene.add.text(0, 0, label, {
       fontFamily: FONTS.body,
-      fontSize: '30px',
+      fontSize: '36px',
       color: COLORS.hex.cream,
-      fontStyle: '500',
+      fontStyle: 'bold',
     }).setOrigin(0.5);
     c.add([bg, txt]);
-    c.setSize(380, 70);
-    c.setInteractive(new Phaser.Geom.Rectangle(-190, -35, 380, 70), Phaser.Geom.Rectangle.Contains);
-    c.on('pointerdown', () => {
-      playSfx('tap');
-      onTap();
+    c.setSize(480, 90);
+    c.setInteractive(new Phaser.Geom.Rectangle(-240, -45, 480, 90), Phaser.Geom.Rectangle.Contains);
+    let pressed = false;
+    c.on('pointerdown', () => { pressed = true; bg.setFillStyle(COLORS.sunAmber, 1); });
+    c.on('pointerup', () => {
+      if (pressed) { pressed = false; bg.setFillStyle(COLORS.brassDark, 0.95); playSfx('tap'); onTap(); }
     });
+    c.on('pointerout', () => { if (pressed) { pressed = false; bg.setFillStyle(COLORS.brassDark, 0.95); } });
+    c.on('pointerupoutside', () => { if (pressed) { pressed = false; bg.setFillStyle(COLORS.brassDark, 0.95); } });
     return c;
   }
 }

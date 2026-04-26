@@ -1,215 +1,200 @@
 import * as Phaser from 'phaser';
 import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../config';
-import { t } from '../systems/narrative';
 import { setPlayer, type AgeBracket, type Gender } from '../systems/save';
 import { playSfx } from '../systems/audio';
-import { VirtualKeyboard } from '../objects/VirtualKeyboard';
+import { PrecisionButton } from '../objects/PrecisionButton';
 
-const STEPS = ['name', 'age', 'gender', 'confirm'] as const;
-type Step = typeof STEPS[number];
+interface CharacterProfile {
+  id: string;
+  name: string;
+  gender: Gender;
+  pronoun: string;
+  role: string;
+  bio: string;
+}
+
+const PROFILES: CharacterProfile[] = [
+  {
+    id: 'anna',
+    name: 'ANNA',
+    gender: 'f',
+    pronoun: 'elle',
+    role: 'Biologiste',
+    bio: 'Spécialiste des plantes orbitales.\nA grandi en lisant les travaux du\nDr. Nórin.',
+  },
+  {
+    id: 'leo',
+    name: 'LÉO',
+    gender: 'm',
+    pronoun: 'il',
+    role: 'Ingénieur de bord',
+    bio: 'Passionné de mécanique sci-fi.\nA candidaté à 4 missions avant\nd\'être enfin retenu.',
+  },
+];
 
 export class PlayerSetupScene extends Phaser.Scene {
-  private step: Step = 'name';
-  private name = '';
-  private age: AgeBracket = 'teen';
-  private gender: Gender = 'nb';
-  private contentLayer?: Phaser.GameObjects.Container;
-  private nameDisplay?: Phaser.GameObjects.Text;
-
   constructor() {
     super('PlayerSetupScene');
   }
 
   create(): void {
-    this.cameras.main.fadeIn(400, 31, 77, 62);
+    this.cameras.main.fadeIn(400, 10, 18, 24);
     this.drawBackground();
-    this.renderStep();
+    this.drawCards();
   }
 
   private drawBackground(): void {
     const { width, height } = this.scale.gameSize;
-    // Pixel art background using sci-fi wall sprites if loaded
     const g = this.add.graphics();
-    g.fillStyle(0x0d2230, 1);
+    g.setDepth(-1000);
+    g.fillStyle(0x0a1218, 1);
     g.fillRect(0, 0, width, height);
 
     // Stars
     g.fillStyle(0xf4e9d8, 0.9);
-    for (let i = 0; i < 60; i++) {
-      g.fillRect(Math.random() * width, Math.random() * height * 0.5, 2, 2);
+    for (let i = 0; i < 80; i++) {
+      g.fillRect(Math.floor(Math.random() * width / 8) * 8, Math.floor(Math.random() * height / 8) * 8, 4, 4);
+    }
+    g.fillStyle(0xa8dadc, 1);
+    for (let i = 0; i < 25; i++) {
+      g.fillRect(Math.floor(Math.random() * width / 8) * 8, Math.floor(Math.random() * height / 8) * 8, 6, 6);
     }
 
-    // Distant Earth glow
-    g.fillStyle(0xa8dadc, 0.18);
+    // Distant planet
+    g.fillStyle(0x7fb069, 0.18);
+    g.fillCircle(width / 2, 350, 220);
+    g.fillStyle(0xa8dadc, 0.15);
     g.fillCircle(width / 2, 350, 280);
-    g.fillStyle(0x7fb069, 0.25);
-    g.fillCircle(width / 2 - 40, 320, 140);
 
-    // Title bar
+    // Title
     this.add.text(width / 2, 180, 'KORA', {
       fontFamily: FONTS.display,
       fontSize: '120px',
       color: COLORS.hex.cream,
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(10);
+    }).setOrigin(0.5);
 
-    this.add.text(width / 2, 280, 'L\'éveil orbital', {
+    this.add.text(width / 2, 320, "L'ÉVEIL ORBITAL", {
       fontFamily: FONTS.mono,
-      fontSize: '32px',
+      fontSize: '34px',
       color: COLORS.hex.brass,
+    }).setOrigin(0.5);
+
+    this.add.text(width / 2, 460, 'CHOISIS TON PERSONNAGE', {
+      fontFamily: FONTS.body,
+      fontSize: '46px',
+      color: COLORS.hex.cream,
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(10);
+    }).setOrigin(0.5);
   }
 
-  private renderStep(): void {
-    if (this.contentLayer) this.contentLayer.destroy();
-    this.contentLayer = this.add.container(0, 0);
-    this.contentLayer.setDepth(20);
-
-    switch (this.step) {
-      case 'name': this.renderNameStep(); break;
-      case 'age': this.renderAgeStep(); break;
-      case 'gender': this.renderGenderStep(); break;
-      case 'confirm': this.start(); break;
-    }
-  }
-
-  private renderNameStep(): void {
+  private drawCards(): void {
     const { width } = this.scale.gameSize;
-    this.contentLayer!.add(this.label(width / 2, 460, t('setup.name_label')));
+    const cardW = 880;
+    const cardH = 460;
+    const gap = 60;
 
-    // Name display box (big)
-    const boxY = 580;
-    const boxW = 720;
-    const boxH = 130;
-    const bg = this.add.rectangle(width / 2, boxY, boxW, boxH, COLORS.charDeep, 0.98);
-    bg.setStrokeStyle(4, COLORS.brass, 1);
-    this.contentLayer!.add(bg);
+    PROFILES.forEach((profile, i) => {
+      const cy = 660 + i * (cardH + gap);
+      const cx = width / 2;
+      this.drawProfileCard(cx, cy, cardW, cardH, profile);
+    });
+  }
 
-    this.nameDisplay = this.add.text(width / 2, boxY, '_', {
+  private drawProfileCard(cx: number, cy: number, w: number, h: number, profile: CharacterProfile): void {
+    // Background card
+    const card = new PrecisionButton(this, {
+      x: cx, y: cy,
+      width: w, height: h,
+      label: '',
+      onTap: () => this.choose(profile),
+    } as any);
+
+    // Build the card content as overlays positioned in scene coords
+    // Portrait icon (left side)
+    const portraitX = cx - w / 2 + 140;
+    const portraitY = cy;
+    this.drawPortraitIcon(portraitX, portraitY, profile);
+
+    // Name (right of portrait)
+    const textX = portraitX + 160;
+    this.add.text(textX, cy - 150, profile.name, {
       fontFamily: FONTS.display,
       fontSize: '64px',
       color: COLORS.hex.cream,
+    }).setOrigin(0, 0.5).setDepth(20);
+
+    // Role
+    this.add.text(textX, cy - 70, profile.role.toUpperCase(), {
+      fontFamily: FONTS.mono,
+      fontSize: '30px',
+      color: COLORS.hex.sunAmber,
+    }).setOrigin(0, 0.5).setDepth(20);
+
+    // Bio
+    this.add.text(textX, cy + 40, profile.bio, {
+      fontFamily: FONTS.body,
+      fontSize: '28px',
+      color: COLORS.hex.cream,
+      lineSpacing: 6,
+    }).setOrigin(0, 0.5).setDepth(20);
+
+    // "JOUER" badge bottom-right of card
+    this.add.rectangle(cx + w / 2 - 110, cy + h / 2 - 60, 180, 64, COLORS.sunAmber, 1)
+      .setStrokeStyle(3, COLORS.cream).setDepth(20);
+    this.add.text(cx + w / 2 - 110, cy + h / 2 - 60, '▶ JOUER', {
+      fontFamily: FONTS.body,
+      fontSize: '32px',
+      color: COLORS.hex.charDeep,
       fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.contentLayer!.add(this.nameDisplay);
-
-    // Virtual keyboard (centered)
-    const keyboardY = 800;
-    const kb = new VirtualKeyboard(this, {
-      x: width / 2,
-      y: keyboardY,
-      maxLength: 12,
-      onChange: (v) => {
-        this.name = v;
-        this.nameDisplay!.setText(v.length > 0 ? v : '_');
-      },
-      onSubmit: (v) => {
-        if (v.length >= 1) {
-          playSfx('success');
-          this.step = 'age';
-          this.renderStep();
-        }
-      },
-    });
-    this.contentLayer!.add(kb);
+    }).setOrigin(0.5).setDepth(21);
   }
 
-  private renderAgeStep(): void {
-    const { width } = this.scale.gameSize;
-    this.contentLayer!.add(this.label(width / 2, 460, `Bonjour, ${this.name}.`));
-    this.contentLayer!.add(this.label(width / 2, 540, t('setup.age_label'), true));
+  private drawPortraitIcon(x: number, y: number, profile: CharacterProfile): void {
+    // Pixel art portrait — chunky square frame with stylized icon
+    const g = this.add.graphics();
+    g.setDepth(15);
+    // Frame
+    g.fillStyle(COLORS.brass, 1);
+    g.fillRect(x - 110, y - 130, 220, 260);
+    g.fillStyle(0x1a3a40, 1);
+    g.fillRect(x - 100, y - 120, 200, 240);
 
-    const ages: Array<[AgeBracket, string]> = [
-      ['kid', t('setup.age_kid')],
-      ['teen', t('setup.age_teen')],
-      ['young', t('setup.age_young')],
-      ['adult', t('setup.age_adult')],
-      ['senior', t('setup.age_senior')],
-    ];
+    // Stylized character silhouette
+    const skin = profile.gender === 'f' ? 0xf4d5a0 : 0xe8b893;
+    const hair = profile.gender === 'f' ? 0x6b4226 : 0x3a2818;
+    const suit = profile.gender === 'f' ? 0xa8dadc : 0x88ad8a;
 
-    let y = 700;
-    ages.forEach(([key, label], i) => {
-      const btn = this.bigBtn(width / 2, y + i * 140, 700, 120, label, () => {
-        this.age = key;
-        playSfx('success');
-        this.step = 'gender';
-        this.renderStep();
-      });
-      this.contentLayer!.add(btn);
-    });
+    // Body (suit)
+    g.fillStyle(suit, 1);
+    g.fillRect(x - 60, y + 10, 120, 100);
+    // Neck
+    g.fillStyle(skin, 1);
+    g.fillRect(x - 22, y - 14, 44, 30);
+    // Head
+    g.fillStyle(skin, 1);
+    g.fillRect(x - 50, y - 90, 100, 90);
+    // Hair
+    g.fillStyle(hair, 1);
+    g.fillRect(x - 56, y - 100, 112, 28);
+    if (profile.gender === 'f') {
+      g.fillRect(x - 60, y - 80, 14, 60);
+      g.fillRect(x + 46, y - 80, 14, 60);
+    }
+    // Eyes
+    g.fillStyle(0x1a1a1a, 1);
+    g.fillRect(x - 24, y - 50, 8, 8);
+    g.fillRect(x + 16, y - 50, 8, 8);
+    // KORA badge on chest
+    g.fillStyle(COLORS.sunAmber, 1);
+    g.fillRect(x - 14, y + 30, 28, 12);
   }
 
-  private renderGenderStep(): void {
-    const { width } = this.scale.gameSize;
-    this.contentLayer!.add(this.label(width / 2, 500, 'Tu es...', true));
-
-    const genders: Array<[Gender, string]> = [
-      ['f', 'Une fille'],
-      ['m', 'Un garçon'],
-      ['nb', 'Autre / non-binaire'],
-    ];
-
-    let y = 660;
-    genders.forEach(([key, label], i) => {
-      const btn = this.bigBtn(width / 2, y + i * 160, 700, 130, label, () => {
-        this.gender = key;
-        playSfx('success');
-        this.step = 'confirm';
-        this.renderStep();
-      });
-      this.contentLayer!.add(btn);
-    });
-
-    // Back button
-    const back = this.bigBtn(width / 2, y + 3 * 160 + 60, 320, 100, '← Retour', () => {
-      this.step = 'age';
-      this.renderStep();
-    }, 'secondary');
-    this.contentLayer!.add(back);
-  }
-
-  private start(): void {
-    setPlayer(this.name, this.age, this.gender);
-    this.cameras.main.fadeOut(500, 31, 77, 62);
+  private choose(profile: CharacterProfile): void {
+    playSfx('success');
+    setPlayer(profile.name.charAt(0) + profile.name.slice(1).toLowerCase(), 'young', profile.gender);
+    this.cameras.main.fadeOut(400, 10, 18, 24);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('MenuScene');
     });
-  }
-
-  private label(x: number, y: number, text: string, small = false): Phaser.GameObjects.Text {
-    return this.add.text(x, y, text, {
-      fontFamily: FONTS.body,
-      fontSize: small ? '40px' : '48px',
-      color: small ? COLORS.hex.brass : COLORS.hex.cream,
-      fontStyle: small ? 'normal' : 'bold',
-      align: 'center',
-    }).setOrigin(0.5);
-  }
-
-  private bigBtn(x: number, y: number, w: number, h: number, label: string, onTap: () => void, kind: 'primary' | 'secondary' = 'primary'): Phaser.GameObjects.Container {
-    const c = this.add.container(x, y);
-    const fill = kind === 'primary' ? COLORS.brassDark : COLORS.charDeep;
-    const bg = this.add.rectangle(0, 0, w, h, fill, 0.95);
-    bg.setStrokeStyle(4, COLORS.brass, 1);
-    const txt = this.add.text(0, 0, label, {
-      fontFamily: FONTS.body,
-      fontSize: '40px',
-      color: COLORS.hex.cream,
-      fontStyle: 'bold',
-      align: 'center',
-      wordWrap: { width: w - 40 },
-    }).setOrigin(0.5);
-    c.add([bg, txt]);
-    c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
-    c.on('pointerdown', () => {
-      playSfx('tap');
-      const origColor = bg.fillColor;
-      bg.setFillStyle(COLORS.sunAmber, 1);
-      this.time.delayedCall(70, () => bg.setFillStyle(origColor, 0.95));
-      onTap();
-    });
-    return c;
   }
 }

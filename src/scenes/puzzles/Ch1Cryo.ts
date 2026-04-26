@@ -13,6 +13,10 @@ export class Ch1Cryo extends PuzzleSceneBase {
   private veraGreeted = false;
   private terminalSprite?: Phaser.GameObjects.Image;
   private framePosition = { x: 320, y: 0 };
+  private braceletHotspot?: Hotspot;
+  // Pickable visuals — destroyed/swapped when items are taken
+  private frameVisual?: Phaser.GameObjects.Container;
+  private lockerVisual?: Phaser.GameObjects.Image;
 
   constructor() {
     super('Ch1Cryo');
@@ -95,23 +99,29 @@ export class Ch1Cryo extends PuzzleSceneBase {
     this.terminalSprite = PixelScene.place(this, 'computerStation1', GAME_WIDTH - 180, STAGE_BOTTOM_Y - 70, termScale, { depth: 6 });
 
     // === Locker (desk substitute) on the left ===
-    PixelScene.place(this, 'locker', 180, STAGE_BOTTOM_Y - 70, 6, { depth: 6 });
+    // Use 'lockerOpen' if items already picked, else 'locker'
+    const lockerKey = hasProgress('ch1.badge_taken') ? 'lockerOpen' : 'locker';
+    this.lockerVisual = PixelScene.place(this, lockerKey, 180, STAGE_BOTTOM_Y - 70, 6, { depth: 6 });
 
     // === Lamp on top wall ===
     PixelScene.place(this, 'lamp1', GAME_WIDTH / 2, wallY + 90, 6, { origin: { x: 0.5, y: 0 }, depth: 4 });
 
     // === Decorative props ===
-    // Books / post-it on locker
-    PixelScene.place(this, 'books', 180, STAGE_BOTTOM_Y - 230, 4, { depth: 7 });
+    // Books / post-it on locker (only if items not yet picked, since they belong to the desk)
+    if (!hasProgress('ch1.badge_taken')) {
+      PixelScene.place(this, 'books', 180, STAGE_BOTTOM_Y - 230, 4, { depth: 7 });
+    }
     // Phone on the floor by the locker
     PixelScene.place(this, 'phone', 320, STAGE_BOTTOM_Y - 60, 4, { depth: 7 });
     // Sticker on the wall
     PixelScene.place(this, 'sticker1', GAME_WIDTH - 380, wallY + 350, 4, { depth: 4 });
 
     // Photo frame on top of the locker (this is the clue-bearer)
+    // Only draw if not yet picked
     this.framePosition = { x: 180, y: STAGE_BOTTOM_Y - 280 };
-    // Use a small drawn frame (no asset for photo frame, draw with rectangle)
-    this.drawPhotoFrame(this.framePosition.x, this.framePosition.y);
+    if (!hasProgress('ch1.schema_taken')) {
+      this.frameVisual = this.drawPhotoFrame(this.framePosition.x, this.framePosition.y);
+    }
 
     // Title on top
     this.add.text(GAME_WIDTH / 2, HUD.topBarHeight + 30, 'MODULE A — CRYOGÉNIE', {
@@ -122,32 +132,34 @@ export class Ch1Cryo extends PuzzleSceneBase {
     }).setOrigin(0.5).setDepth(50);
   }
 
-  private drawPhotoFrame(x: number, y: number): void {
+  private drawPhotoFrame(x: number, y: number): Phaser.GameObjects.Container {
+    const c = this.add.container(x, y);
+    c.setDepth(8);
     const g = this.add.graphics();
-    g.setDepth(8);
     // Brass frame
     g.fillStyle(COLORS.brass, 1);
-    g.fillRect(x - 50, y - 70, 100, 140);
-    // Inner "photo" (group portrait silhouette)
+    g.fillRect(-50, -70, 100, 140);
     g.fillStyle(COLORS.charDeep, 1);
-    g.fillRect(x - 42, y - 62, 84, 110);
-    g.fillStyle(COLORS.cream, 0.6);
-    // Three little heads
-    g.fillCircle(x - 22, y - 30, 8);
-    g.fillCircle(x, y - 35, 9);
-    g.fillCircle(x + 22, y - 30, 8);
-    // Bodies
-    g.fillRect(x - 30, y - 22, 16, 30);
-    g.fillRect(x - 8, y - 25, 16, 33);
-    g.fillRect(x + 14, y - 22, 16, 30);
+    g.fillRect(-42, -62, 84, 110);
+    // Heads
+    g.fillStyle(COLORS.cream, 0.7);
+    g.fillCircle(-22, -30, 8);
+    g.fillCircle(0, -35, 9);
+    g.fillCircle(22, -30, 8);
+    g.fillRect(-30, -22, 16, 30);
+    g.fillRect(-8, -25, 16, 33);
+    g.fillRect(14, -22, 16, 30);
     // Date plaque
     g.fillStyle(COLORS.brassDark, 1);
-    g.fillRect(x - 50, y + 55, 100, 18);
-    this.add.text(x, y + 64, '14.03.2064', {
+    g.fillRect(-50, 55, 100, 18);
+    c.add(g);
+    const date = this.add.text(0, 64, '14.03.2064', {
       fontFamily: FONTS.mono,
-      fontSize: '14px',
+      fontSize: '16px',
       color: COLORS.hex.cream,
-    }).setOrigin(0.5).setDepth(9);
+    }).setOrigin(0.5);
+    c.add(date);
+    return c;
   }
 
   private makeHotspots(): void {
@@ -202,7 +214,24 @@ export class Ch1Cryo extends PuzzleSceneBase {
       },
     });
 
-    // Locker (with badge & note)
+    // Locker (with badge & note) — primary tap also picks up
+    const pickLocker = () => {
+      this.recordTap();
+      if (!hasItem('badge') && !hasProgress('ch1.badge_taken')) {
+        this.showNarration(t('scene.ch1.desk_pick'), () => {
+          addItem('badge');
+          addItem('note_leah');
+          setProgress('ch1.badge_taken');
+          notifyInventoryChange();
+          // Swap locker visual to "open"
+          if (this.lockerVisual && this.textures.exists('lockerOpen')) {
+            this.lockerVisual.setTexture('lockerOpen');
+          }
+        });
+      } else {
+        this.showNarration(t('scene.ch1.desk_look'));
+      }
+    };
     new Hotspot(this, {
       x: 180,
       y: STAGE_BOTTOM_Y - 230,
@@ -213,22 +242,35 @@ export class Ch1Cryo extends PuzzleSceneBase {
         this.recordTap();
         this.showNarration(t('scene.ch1.desk_look'));
       },
-      onPick: () => {
-        this.recordTap();
-        if (!hasItem('badge') && !hasProgress('ch1.badge_taken')) {
-          this.showNarration(t('scene.ch1.desk_pick'), () => {
-            addItem('badge');
-            addItem('note_leah');
-            setProgress('ch1.badge_taken');
-            notifyInventoryChange();
-          });
-        } else {
-          this.showNarration(t('scene.ch1.desk_look'));
-        }
-      },
+      onPick: pickLocker,
+      onUse: pickLocker,
     });
 
-    // Photo frame (THE clue — date 14.03.2064 → code 1403)
+    // Photo frame (THE clue — date 14.03.2064 → code 1403). Removed from scene on pick.
+    const pickFrame = () => {
+      this.recordTap();
+      if (!hasItem('cryo_schema') && !hasProgress('ch1.schema_taken')) {
+        this.showNarration('Tu prends le cadre. La date au dos est gravée : 14.03.2064.', () => {
+          addItem('cryo_schema');
+          setProgress('ch1.schema_taken');
+          notifyInventoryChange();
+          // Remove frame from scene
+          if (this.frameVisual) {
+            this.tweens.add({
+              targets: this.frameVisual,
+              alpha: { from: 1, to: 0 },
+              duration: 280,
+              onComplete: () => {
+                this.frameVisual?.destroy();
+                this.frameVisual = undefined;
+              },
+            });
+          }
+        });
+      } else {
+        this.showNarration(t('scene.ch1.frame_look'));
+      }
+    };
     new Hotspot(this, {
       x: this.framePosition.x,
       y: this.framePosition.y,
@@ -239,36 +281,26 @@ export class Ch1Cryo extends PuzzleSceneBase {
         this.recordTap();
         this.showNarration(t('scene.ch1.frame_look'));
       },
-      onPick: () => {
-        this.recordTap();
-        if (!hasItem('cryo_schema') && !hasProgress('ch1.schema_taken')) {
-          this.showNarration('Tu prends le cadre. La date au dos est gravée : 14.03.2064.', () => {
-            addItem('cryo_schema');
-            setProgress('ch1.schema_taken');
-            notifyInventoryChange();
-          });
-        } else {
-          this.showNarration(t('scene.ch1.frame_look'));
-        }
-      },
+      onPick: pickFrame,
+      onUse: pickFrame,
     });
 
-    // Terminal — big hotspot
+    // Terminal — primary interactable: ANY verb opens the keypad
+    // (LucasArts pattern: critical objects always respond, even on Regarder)
+    const openTerminal = () => {
+      this.recordTap();
+      if (!this.veraGreeted) return;
+      this.openKeypad();
+    };
     new Hotspot(this, {
       x: GAME_WIDTH - 180,
       y: STAGE_BOTTOM_Y - 230,
       width: 380,
-      height: 360,
+      height: 480,
       name: 'terminal cryo',
-      onLook: () => {
-        this.recordTap();
-        this.showNarration(t('scene.ch1.terminal_look'));
-      },
-      onUse: () => {
-        this.recordTap();
-        if (!this.veraGreeted) return;
-        this.openKeypad();
-      },
+      onLook: openTerminal,
+      onUse: openTerminal,
+      onPick: () => this.showNarration('Le terminal est fixé au sol. Tu peux l\'utiliser, pas le prendre.'),
     });
 
     // Door (left back wall)

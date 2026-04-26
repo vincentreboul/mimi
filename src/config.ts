@@ -46,10 +46,10 @@ export const HUD = {
   verbButtonWidth: 520,            // 2 columns: (1080 - gaps) / 2
   // Action label (current object name)
   actionLabelHeight: 56,
-  // Inventory — slightly smaller slots
+  // Inventory — slightly smaller slots so hint button fits on the right
   inventoryHeight: 160,
-  inventorySlotSize: 130,
-  // Hint button
+  inventorySlotSize: 108,
+  // Hint button — placed at right of inventory strip
   hintButtonSize: 120,
   // Hotspot minimums — VERY generous for mobile
   touchTargetMin: 180,
