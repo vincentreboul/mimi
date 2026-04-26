@@ -1,9 +1,13 @@
 import * as Phaser from 'phaser';
 import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT, HUD, STAGE_BOTTOM_Y } from '../config';
 import { t } from '../systems/narrative';
-import { getState, getPlayer, resetSave, setSetting, getSettings } from '../systems/save';
+import { getState, getPlayer, resetSave, setSetting, getSettings, getActiveSlot, exportToJSON } from '../systems/save';
 import { PixelScene } from '../objects/PixelScene';
 import { playSfx } from '../systems/audio';
+import { getDifficulty, setDifficulty, getVisualHints, setVisualHints, difficultyLabel, difficultyDescription } from '../systems/difficulty';
+import type { Difficulty as DifficultyT } from '../systems/save';
+import { ACHIEVEMENTS } from '../data/achievements';
+import { isUnlocked as isAchievementUnlocked } from '../systems/achievements';
 
 const CHAPTER_SCENE_MAP: Record<number, string> = {
   1: 'Ch1Cryo',
@@ -49,15 +53,18 @@ export class MenuScene extends Phaser.Scene {
     // Buttons
     const state = getState();
     const player = getPlayer();
+    const slot = getActiveSlot();
     const hasProgress = state.scene !== 'MenuScene' && state.chapter >= 1;
+    const ngPlusUnlocked = slot.ngPlus?.unlocked ?? false;
+    const hasEnding = (slot.endings ?? []).length > 0;
 
-    let y = 1100;
+    let y = 1080;
     if (hasProgress) {
       this.bigButton(width / 2, y, t('ui.continue'), () => {
         const nextScene = CHAPTER_SCENE_MAP[state.chapter] ?? 'Ch1Cryo';
         this.fadeTo(nextScene);
       });
-      y += 170;
+      y += 160;
     }
 
     this.bigButton(width / 2, y, hasProgress ? 'NOUVELLE PARTIE' : 'COMMENCER', () => {
@@ -70,8 +77,27 @@ export class MenuScene extends Phaser.Scene {
         this.fadeTo('ChapterIntroScene', { chapter: 1 });
       }
     });
+    y += 160;
 
-    y += 170;
+    if (ngPlusUnlocked) {
+      this.bigButton(width / 2, y, 'NG+ — RETOUR D\'IOLAS', () => {
+        // NG+ flips the player profile (UI hint only — full NG+ flow is Phase 4 polish)
+        this.showConfirm(
+          'NG+ — Tu rejoues côté IOLAS.\nLes fragments sont différents. Les contradictions vont émerger.',
+          () => this.fadeTo('ChapterIntroScene', { chapter: 1, ngPlus: true })
+        );
+      });
+      y += 160;
+    }
+
+    if (hasEnding) {
+      this.bigButton(width / 2, y, 'REJOUER UN CHAPITRE', () => this.openChapterPicker());
+      y += 160;
+    }
+
+    this.bigButton(width / 2, y, 'SOUVENIRS', () => this.openAchievements());
+    y += 160;
+
     this.bigButton(width / 2, y, t('ui.settings').toUpperCase(), () => this.openSettings());
 
     // Player badge bottom
@@ -172,70 +198,118 @@ export class MenuScene extends Phaser.Scene {
     overlay.setDepth(5000);
 
     const bg = this.add.rectangle(0, 0, width, height, COLORS.charDeep, 0.94).setOrigin(0);
+    bg.setInteractive(); // catch background taps
     overlay.add(bg);
 
-    overlay.add(this.add.text(width / 2, 200, 'RÉGLAGES', {
+    overlay.add(this.add.text(width / 2, 140, 'RÉGLAGES', {
       fontFamily: FONTS.display,
-      fontSize: '64px',
+      fontSize: '54px',
       color: COLORS.hex.cream,
     }).setOrigin(0.5));
 
-    let y = 380;
-    overlay.add(this.add.text(width / 2, y, 'NIVEAU D\'AIDE', {
+    // === DIFFICULTÉ ===
+    let y = 280;
+    overlay.add(this.add.text(width / 2, y, 'DIFFICULTÉ', {
       fontFamily: FONTS.mono,
-      fontSize: '36px',
+      fontSize: '32px',
       color: COLORS.hex.brass,
     }).setOrigin(0.5));
-    y += 90;
+    y += 70;
 
-    const hintLevels: Array<['minus' | 'normal' | 'plus', string]> = [
-      ['minus', 'MOINS'],
-      ['normal', 'NORMAL'],
-      ['plus', 'PLUS'],
+    const diffs: DifficultyT[] = ['EXPLORATEUR', 'AVENTURIER', 'ARCHIVISTE'];
+    const diffBtns: Phaser.GameObjects.Rectangle[] = [];
+    diffs.forEach((d, i) => {
+      const x = width / 2 + (i - 1) * 320;
+      const btn = this.smallButton(x, y, 290, 90, difficultyLabel(d).toUpperCase(), () => {
+        setDifficulty(d);
+        this.refreshToggles(diffBtns, diffs, d);
+        descTxt.setText(difficultyDescription(d));
+      });
+      diffBtns.push(btn);
+    });
+    this.refreshToggles(diffBtns, diffs, getDifficulty());
+
+    const descTxt = this.add.text(width / 2, y + 80, difficultyDescription(getDifficulty()), {
+      fontFamily: FONTS.body,
+      fontSize: '24px',
+      color: COLORS.hex.cream,
+      align: 'center',
+      wordWrap: { width: width - 200 },
+    }).setOrigin(0.5);
+    overlay.add(descTxt);
+
+    // === INDICES VISUELS (slider) ===
+    y += 180;
+    overlay.add(this.add.text(width / 2, y, 'INDICES VISUELS', {
+      fontFamily: FONTS.mono,
+      fontSize: '32px',
+      color: COLORS.hex.brass,
+    }).setOrigin(0.5));
+    y += 70;
+
+    const hints: Array<['vif' | 'subtil' | 'aucun', string]> = [
+      ['vif', 'VIFS'],
+      ['subtil', 'SUBTILS'],
+      ['aucun', 'AUCUN'],
     ];
     const hintBtns: Phaser.GameObjects.Rectangle[] = [];
-    hintLevels.forEach(([lvl, label], i) => {
+    hints.forEach(([v, label], i) => {
       const x = width / 2 + (i - 1) * 280;
-      const btn = this.smallButton(x, y, 250, 100, label, () => {
-        setSetting('hintLevel', lvl);
-        this.refreshToggles(hintBtns, hintLevels.map(([l]) => l), lvl);
+      const btn = this.smallButton(x, y, 250, 90, label, () => {
+        setVisualHints(v);
+        this.refreshToggles(hintBtns, hints.map(([k]) => k), v);
       });
       hintBtns.push(btn);
     });
-    this.refreshToggles(hintBtns, hintLevels.map(([l]) => l), settings.hintLevel);
+    this.refreshToggles(hintBtns, hints.map(([k]) => k), getVisualHints());
 
-    y += 200;
-    overlay.add(this.add.text(width / 2, y, 'POLICE', {
-      fontFamily: FONTS.mono,
-      fontSize: '36px',
-      color: COLORS.hex.brass,
-    }).setOrigin(0.5));
-    y += 90;
-
-    const fonts: Array<['inter' | 'atkinson', string]> = [['inter', 'PIXEL'], ['atkinson', 'ATKINSON']];
-    const fontBtns: Phaser.GameObjects.Rectangle[] = [];
-    fonts.forEach(([f, label], i) => {
-      const x = width / 2 + (i - 0.5) * 380;
-      const btn = this.smallButton(x, y, 350, 100, label, () => {
-        setSetting('font', f);
-        this.refreshToggles(fontBtns, fonts.map(([k]) => k), f);
-      });
-      fontBtns.push(btn);
-    });
-    this.refreshToggles(fontBtns, fonts.map(([k]) => k), settings.font);
-
-    y += 200;
-    // Motion toggle (no label-swap to avoid getAt complexity — just shows current state on hover)
-    this.smallButton(width / 2, y, 600, 110, settings.reducedMotion ? 'ANIMATIONS RÉDUITES ✓' : 'ANIMATIONS RÉDUITES', () => {
-      const cur = getSettings().reducedMotion;
-      setSetting('reducedMotion', !cur);
-      // Re-open settings to refresh
+    // === MOUVEMENT RÉDUIT ===
+    y += 150;
+    this.smallButton(width / 2, y, 600, 90, settings.reducedMotion ? 'ANIMATIONS RÉDUITES ✓' : 'ANIMATIONS RÉDUITES', () => {
+      setSetting('reducedMotion', !getSettings().reducedMotion);
       overlay.destroy();
       this.openSettings();
     });
 
-    y += 180;
-    const resetBtn = this.smallButton(width / 2, y, 600, 110, 'RECOMMENCER', () => {
+    // === EXPORT/IMPORT SAUVEGARDE ===
+    y += 130;
+    const exportBtn = this.smallButton(width / 2 - 200, y, 380, 90, 'EXPORTER', () => {
+      const json = exportToJSON();
+      try {
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `kora-save-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.warn('Export failed:', e);
+      }
+    });
+    const importBtn = this.smallButton(width / 2 + 200, y, 380, 90, 'IMPORTER', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async () => {
+        const f = input.files?.[0];
+        if (!f) return;
+        const txt = await f.text();
+        const { importFromJSON } = await import('../systems/save');
+        const r = importFromJSON(txt);
+        if (r.ok) {
+          overlay.destroy();
+          this.scene.restart();
+        } else {
+          console.warn('Import failed:', r.error);
+        }
+      };
+      input.click();
+    });
+
+    // === RECOMMENCER (red) ===
+    y += 130;
+    const resetBtn = this.smallButton(width / 2, y, 600, 90, 'RECOMMENCER', () => {
       this.showConfirm(t('settings.reset_confirm'), () => {
         resetSave();
         overlay.destroy();
@@ -243,6 +317,96 @@ export class MenuScene extends Phaser.Scene {
       });
     });
     resetBtn.setFillStyle(COLORS.warning, 0.85);
+
+    this.bigButton(width / 2, height - 200, 'RETOUR', () => overlay.destroy());
+  }
+
+  private openAchievements(): void {
+    const { width, height } = this.scale.gameSize;
+    const overlay = this.add.container(0, 0);
+    overlay.setDepth(5000);
+
+    const bg = this.add.rectangle(0, 0, width, height, COLORS.charDeep, 0.96).setOrigin(0);
+    bg.setInteractive();
+    overlay.add(bg);
+
+    overlay.add(this.add.text(width / 2, 160, 'SOUVENIRS', {
+      fontFamily: FONTS.display,
+      fontSize: '54px',
+      color: COLORS.hex.cream,
+    }).setOrigin(0.5));
+
+    const total = ACHIEVEMENTS.length;
+    const unlocked = ACHIEVEMENTS.filter((a) => isAchievementUnlocked(a.id)).length;
+    overlay.add(this.add.text(width / 2, 230, `${unlocked} / ${total}`, {
+      fontFamily: FONTS.mono,
+      fontSize: '32px',
+      color: COLORS.hex.brass,
+    }).setOrigin(0.5));
+
+    let y = 320;
+    ACHIEVEMENTS.forEach((a) => {
+      const isUnlock = isAchievementUnlocked(a.id);
+      const showHidden = a.hidden && !isUnlock;
+      const title = showHidden ? '???' : a.title;
+      const desc = showHidden ? 'Secret — à découvrir.' : a.description;
+      const icon = showHidden ? '?' : a.icon;
+      const color = isUnlock ? COLORS.hex.cream : COLORS.hex.brass;
+      const alpha = isUnlock ? 1 : 0.5;
+
+      overlay.add(this.add.text(80, y, icon, { fontFamily: FONTS.body, fontSize: '40px' }).setAlpha(alpha));
+      overlay.add(this.add.text(160, y, title, {
+        fontFamily: FONTS.body, fontSize: '28px', color, fontStyle: 'bold',
+      }).setAlpha(alpha));
+      overlay.add(this.add.text(160, y + 36, desc, {
+        fontFamily: FONTS.body, fontSize: '22px', color, wordWrap: { width: width - 240 },
+      }).setAlpha(alpha));
+      y += 90;
+    });
+
+    this.bigButton(width / 2, height - 200, 'RETOUR', () => overlay.destroy());
+  }
+
+  private openChapterPicker(): void {
+    const { width, height } = this.scale.gameSize;
+    const overlay = this.add.container(0, 0);
+    overlay.setDepth(5000);
+
+    const bg = this.add.rectangle(0, 0, width, height, COLORS.charDeep, 0.96).setOrigin(0);
+    bg.setInteractive();
+    overlay.add(bg);
+
+    overlay.add(this.add.text(width / 2, 200, 'REJOUER UN CHAPITRE', {
+      fontFamily: FONTS.display,
+      fontSize: '52px',
+      color: COLORS.hex.cream,
+    }).setOrigin(0.5));
+
+    const chapters: Array<[number, string, string]> = [
+      [1, 'CRYO', 'Ch1Cryo'],
+      [2, 'SERRE', 'Ch2Serre'],
+      [3, 'ATELIER', 'Ch3Atelier'],
+      [4, 'COUPOLE', 'Ch4Coupole'],
+    ];
+
+    let y = 380;
+    chapters.forEach(([n, label, sceneKey]) => {
+      this.bigButton(width / 2, y, `CHAPITRE ${n} — ${label}`, () => {
+        overlay.destroy();
+        this.fadeTo(sceneKey);
+      });
+      y += 170;
+    });
+
+    // ARCHIVE if unlocked
+    const archiveDone = (getActiveSlot().endings ?? []).includes('archive');
+    if (archiveDone) {
+      this.bigButton(width / 2, y, 'CHAPITRE 5 — ARCHIVE', () => {
+        overlay.destroy();
+        this.fadeTo('Ch5Archive');
+      });
+      y += 170;
+    }
 
     this.bigButton(width / 2, height - 200, 'RETOUR', () => overlay.destroy());
   }
