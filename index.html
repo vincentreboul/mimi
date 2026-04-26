@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <title>KORA — L'éveil orbital</title>
 
-    <!-- PWA -->
+    <!-- PWA (manifest + service worker registration injected by vite-plugin-pwa) -->
     <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png" />
-    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon-180.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -21,19 +20,13 @@
     <meta property="og:description" content="Un escape game spatial." />
     <meta property="og:type" content="website" />
 
-    <!-- Fonts (preload critical) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Pixelify+Sans:wght@400;500;600;700&display=swap"
-    />
+    <!-- Fonts: self-hosted via @fontsource imports in src/main.ts (no Google Fonts dep) -->
 
-    <script type="module" crossorigin src="/mimi/assets/index-BCTh52kM.js"></script>
-    <link rel="modulepreload" crossorigin href="/mimi/assets/phaser-2eZCqzsv.js">
+    <script type="module" crossorigin src="/mimi/assets/index-DUnEo6HY.js"></script>
+    <link rel="modulepreload" crossorigin href="/mimi/assets/phaser-DRBzgbux.js">
     <link rel="modulepreload" crossorigin href="/mimi/assets/howler-B3uvysex.js">
-    <link rel="stylesheet" crossorigin href="/mimi/assets/index-eelcfZcL.css">
-  </head>
+    <link rel="stylesheet" crossorigin href="/mimi/assets/index-irefQgit.css">
+  <link rel="manifest" href="/mimi/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/mimi/registerSW.js"></script></head>
   <body>
     <div id="game"></div>
   </body>
