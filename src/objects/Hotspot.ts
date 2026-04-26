@@ -1,27 +1,34 @@
 import * as Phaser from 'phaser';
 import { COLORS, HUD } from '../config';
 import { playSfx } from '../systems/audio';
+import { setTarget, getActiveVerb, type Verb, type VerbTarget } from '../systems/verbs';
+import type { ItemId } from '../data/items';
 
 export interface HotspotConfig {
   x: number;
   y: number;
   width?: number;
   height?: number;
+  name: string;                    // Required — shown in action label
   shape?: 'rect' | 'circle';
-  label?: string; // accessibility / dev hint
-  glow?: boolean;
-  onTap: () => void;
-  acceptsItem?: (itemId: string) => boolean;
-  onItemDrop?: (itemId: string) => void;
+  showIndicator?: boolean;         // Show subtle "tap me" dot
+  // Per-verb handlers — return true if handled, false to fall through to default
+  onLook?: () => void;
+  onPick?: () => void;
+  onUse?: (item?: ItemId) => void; // item present when "use X with this"
+  onTalk?: () => void;
+  // Fallback for unsupported verbs
+  defaultMessage?: string;
 }
 
 /**
- * Hotspot: an invisible (or subtly highlighted) interactive zone.
- * Generous touch target — minimum 96x96 (logical px = ~48pt on iPhone).
+ * Hotspot: an interactive zone with a name and verb-based handlers.
+ * Tap shows the name in ActionLabel and dispatches the active verb.
  */
 export class Hotspot extends Phaser.GameObjects.Container {
-  private bg: Phaser.GameObjects.Shape;
-  private glowFx: Phaser.Tweens.Tween | null = null;
+  private indicator: Phaser.GameObjects.Container | null = null;
+  private highlight: Phaser.GameObjects.Rectangle;
+  private highlightTween: Phaser.Tweens.Tween | null = null;
   public config: HotspotConfig;
 
   constructor(scene: Phaser.Scene, config: HotspotConfig) {
@@ -31,15 +38,10 @@ export class Hotspot extends Phaser.GameObjects.Container {
     const w = Math.max(config.width ?? HUD.touchTargetMin, HUD.touchTargetMin);
     const h = Math.max(config.height ?? HUD.touchTargetMin, HUD.touchTargetMin);
 
-    if (config.shape === 'circle') {
-      this.bg = scene.add.circle(0, 0, Math.max(w, h) / 2, COLORS.cream, 0);
-      this.bg.setStrokeStyle(0, COLORS.cream, 0);
-    } else {
-      this.bg = scene.add.rectangle(0, 0, w, h, COLORS.cream, 0);
-      this.bg.setStrokeStyle(0, COLORS.cream, 0);
-    }
-    this.bg.setOrigin(0.5);
-    this.add(this.bg);
+    // Highlight rect (visible briefly on tap, on hover, or always-on for active target)
+    this.highlight = scene.add.rectangle(0, 0, w, h, COLORS.sunAmber, 0);
+    this.highlight.setStrokeStyle(4, COLORS.sunAmber, 0);
+    this.add(this.highlight);
 
     this.setSize(w, h);
     this.setInteractive(
@@ -47,59 +49,108 @@ export class Hotspot extends Phaser.GameObjects.Container {
       Phaser.Geom.Rectangle.Contains
     );
 
-    this.on('pointerdown', () => {
-      playSfx('tap');
-      this.pulse();
-      config.onTap();
-    });
+    this.on('pointerover', () => this.showHighlight(0.2));
+    this.on('pointerout', () => this.fadeHighlight());
+    this.on('pointerdown', () => this.onTap());
 
-    if (config.glow) this.startGlow();
+    if (config.showIndicator !== false) this.addIndicator();
 
     scene.add.existing(this);
   }
 
-  startGlow(): void {
-    if (this.glowFx) return;
-    this.bg.setStrokeStyle(4, COLORS.sunAmber, 0.9);
-    this.glowFx = this.scene.tweens.add({
-      targets: this.bg,
-      alpha: { from: 0.15, to: 0.45 },
-      duration: 900,
-      yoyo: true,
+  private addIndicator(): void {
+    // Small pulsing dot to telegraph interactability
+    const dot = this.scene.add.container(0, 0);
+    const ring = this.scene.add.circle(0, 0, 18, COLORS.sunAmber, 0).setStrokeStyle(3, COLORS.sunAmber, 0.95);
+    const inner = this.scene.add.circle(0, 0, 8, COLORS.sunAmber, 0.95);
+    dot.add([ring, inner]);
+    this.add(dot);
+    this.indicator = dot;
+
+    this.scene.tweens.add({
+      targets: ring,
+      scale: { from: 1, to: 1.6 },
+      alpha: { from: 0.95, to: 0 },
+      duration: 1400,
       repeat: -1,
-      ease: 'Sine.easeInOut',
+      ease: 'Sine.easeOut',
     });
-    this.bg.fillColor = COLORS.sunAmber;
   }
 
-  stopGlow(): void {
-    if (this.glowFx) {
-      this.glowFx.stop();
-      this.glowFx = null;
+  hideIndicator(): void {
+    if (this.indicator) {
+      this.indicator.setVisible(false);
     }
-    this.bg.setStrokeStyle(0, COLORS.cream, 0);
-    this.bg.setAlpha(0);
+  }
+
+  showHighlight(alpha = 0.3): void {
+    this.highlight.setStrokeStyle(4, COLORS.sunAmber, 1);
+    this.highlight.setFillStyle(COLORS.sunAmber, alpha);
+  }
+
+  fadeHighlight(): void {
+    this.highlight.setStrokeStyle(0, COLORS.sunAmber, 0);
+    this.highlight.setFillStyle(COLORS.sunAmber, 0);
   }
 
   pulse(): void {
     this.scene.tweens.add({
-      targets: this.bg,
-      alpha: { from: 0.5, to: 0 },
+      targets: this.highlight,
+      alpha: { from: 0.6, to: 0 },
       duration: 320,
       ease: 'Cubic.easeOut',
       onStart: () => {
-        this.bg.fillColor = COLORS.sunAmber;
-        this.bg.setAlpha(0.35);
+        this.highlight.setFillStyle(COLORS.sunAmber, 0.6);
       },
     });
   }
 
-  setLabel(_label: string): void {
-    // For future accessibility: could add aria-label via DOM overlay
+  private onTap(): void {
+    playSfx('tap');
+    this.pulse();
+
+    // Set this as target
+    const target: VerbTarget = {
+      kind: 'hotspot',
+      id: this.config.name,
+      display: this.config.name,
+    };
+    setTarget(target);
+
+    // Dispatch active verb
+    const verb = getActiveVerb();
+    this.handleVerb(verb);
+  }
+
+  private handleVerb(verb: Verb): void {
+    const c = this.config;
+    switch (verb) {
+      case 'look':
+        if (c.onLook) c.onLook();
+        else this.fallback('Tu observes ' + c.name + '. Rien de particulier.');
+        break;
+      case 'pick':
+        if (c.onPick) c.onPick();
+        else this.fallback('Tu ne peux pas prendre ça.');
+        break;
+      case 'use':
+        if (c.onUse) c.onUse();
+        else this.fallback('Tu ne peux pas utiliser ça comme ça.');
+        break;
+      case 'talk':
+        if (c.onTalk) c.onTalk();
+        else this.fallback('Ça ne te répondra pas.');
+        break;
+    }
+  }
+
+  private fallback(msg: string): void {
+    // Emit event the scene can listen to
+    this.scene.events.emit('hotspot-fallback', { hotspot: this, message: msg });
   }
 
   destroy(fromScene?: boolean): void {
-    if (this.glowFx) this.glowFx.stop();
+    if (this.highlightTween) this.highlightTween.stop();
     super.destroy(fromScene);
   }
 }

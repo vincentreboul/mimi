@@ -25,9 +25,9 @@ const config: Phaser.Types.Core.GameConfig = {
     forceSetTimeOut: false,
   },
   render: {
-    pixelArt: false,
-    antialias: true,
-    roundPixels: false,
+    pixelArt: true,
+    antialias: false,
+    roundPixels: true,
   },
   input: {
     activePointers: 2,

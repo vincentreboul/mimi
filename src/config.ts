@@ -36,13 +36,29 @@ export const FONTS = {
   mono: 'Space Mono, monospace',
 } as const;
 
-// HUD layout
+// HUD layout — touch-first, generous targets (iPhone)
 export const HUD = {
-  inventoryY: GAME_HEIGHT - 280,
-  inventoryHeight: 200,
-  hintButtonSize: 100,
-  touchTargetMin: 96,
+  topBarHeight: 110,
+  // SCUMM verb panel
+  verbPanelHeight: 240,            // 2 rows × 120
+  verbButtonHeight: 110,
+  verbButtonWidth: 510,            // 2 columns: (1080 - gaps) / 2
+  // Action label (current object name)
+  actionLabelHeight: 88,
+  // Inventory
+  inventoryHeight: 220,
+  inventorySlotSize: 160,
+  // Hint button
+  hintButtonSize: 130,
+  // Hotspot minimums — VERY generous for mobile
+  touchTargetMin: 180,             // ~ 90 pt on iPhone (2× Apple HIG)
+  hotspotMin: 220,                 // even bigger for primary scene objects
 } as const;
+
+// Total HUD bottom block height (verbs + label + inventory + safe area)
+export const HUD_BOTTOM_TOTAL = HUD.actionLabelHeight + HUD.verbPanelHeight + HUD.inventoryHeight + 40;
+// Scene area = top of HUD (everything above this is "stage")
+export const STAGE_BOTTOM_Y = GAME_HEIGHT - HUD_BOTTOM_TOTAL;
 
 // Game constants
 export const HINT_TIERS = 3;
