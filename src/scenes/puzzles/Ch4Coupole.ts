@@ -3,20 +3,45 @@ import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT, HUD, STAGE_BOTTOM_Y } from '../
 import { PuzzleSceneBase } from './PuzzleSceneBase';
 import { PixelScene } from '../../objects/PixelScene';
 import { Hotspot } from '../../objects/Hotspot';
-import { addItem, hasItem, removeItem, notifyInventoryChange } from '../../systems/inventory';
-import { setProgress, hasProgress, setFlag, getPlayer } from '../../systems/save';
+import { addItem, removeItem, notifyInventoryChange } from '../../systems/inventory';
+import {
+  setProgress,
+  hasProgress,
+  setFlag,
+  getPlayer,
+  addEnding,
+  addAchievement,
+  hasAchievement,
+  getActiveSlot,
+  type Ending,
+} from '../../systems/save';
 import { PUZZLE_IDS, SOLUTIONS } from '../../data/puzzles';
-import { t } from '../../systems/narrative';
 import { ITEMS, type ItemId } from '../../data/items';
 import { playSfx } from '../../systems/audio';
 import { CH4_SPRITES } from '../../data/assets';
+import { globalCompletionRate } from '../../systems/assertions';
+import { getVeraDialogue } from '../../data/dialogues/vera';
+
+type SlotKey = 'left' | 'center' | 'right';
+
+interface CrystalSlot {
+  key: SlotKey;
+  bg: Phaser.GameObjects.Rectangle;
+  glyph: Phaser.GameObjects.Text;
+  defaultIcon: string;
+  placed: ItemId | null;
+}
 
 export class Ch4Coupole extends PuzzleSceneBase {
-  private leftSlot?: { container: Phaser.GameObjects.Container; placed: ItemId | null; name: Phaser.GameObjects.Text };
-  private rightSlot?: { container: Phaser.GameObjects.Container; placed: ItemId | null; name: Phaser.GameObjects.Text };
-  private alignBtn?: Phaser.GameObjects.Container;
+  private slots: Record<SlotKey, CrystalSlot> = {} as Record<SlotKey, CrystalSlot>;
+  private alignBtnBg?: Phaser.GameObjects.Rectangle;
+  private alignBtnTxt?: Phaser.GameObjects.Text;
   private telescopeAligned = false;
+  private confessionDelivered = false;
+  private firstCrystalPicked = false;
+
   private choiceContainer?: Phaser.GameObjects.Container;
+  private navHotspot?: Hotspot;
 
   constructor() {
     super('Ch4Coupole');
@@ -35,23 +60,30 @@ export class Ch4Coupole extends PuzzleSceneBase {
     this.makeTelescope(GAME_WIDTH / 2, STAGE_BOTTOM_Y - 280);
     this.makeHotspots();
     this.spawnTwinklingStars();
-    this.spawnEarthGlow();
+    this.spawnAeolisGlow();
 
     if (!hasProgress('ch4.vera_greeted')) {
       this.time.delayedCall(800, () => {
         this.showVeraSequence(
-          [t('vera.ch4.greeting'), t('vera.ch4.task')],
+          [
+            'Vous êtes prête. Je vais tout vous dire. Mais d\'abord, regardez par le télescope. Vous comprendrez avant que je parle.',
+          ],
           () => setProgress('ch4.vera_greeted')
         );
       });
     }
+
+    // If the player returns to Ch4 after confession, restore the choice panel readiness.
+    if (hasProgress('ch4.confession_done')) {
+      this.confessionDelivered = true;
+    }
   }
 
+  // ---------- Background ----------
+
   private composeBackground(): void {
-    // Deep space
     PixelScene.stageBackground(this, 0x05080f);
 
-    // Stars
     const stars = this.add.graphics();
     stars.setDepth(-900);
     stars.fillStyle(0xf4e9d8, 0.95);
@@ -61,37 +93,31 @@ export class Ch4Coupole extends PuzzleSceneBase {
       stars.fillRect(x, y, 2, 2);
     }
 
-    // Earth — large soft circle (drawn since no Earth sprite)
-    const earth = this.add.graphics();
-    earth.setDepth(-800);
+    // Aeolis — large soft circle (greener / warmer than Earth)
+    const aeolis = this.add.graphics();
+    aeolis.setDepth(-800);
     const ex = GAME_WIDTH / 2;
     const ey = HUD.topBarHeight + 380;
-    // Halo
-    earth.fillStyle(0xa8dadc, 0.35);
-    earth.fillCircle(ex, ey, 320);
-    // Earth body
-    earth.fillStyle(0xa8dadc, 0.95);
-    earth.fillCircle(ex, ey, 280);
-    // Continents (greens)
-    earth.fillStyle(0x7fb069, 0.85);
-    earth.fillCircle(ex - 60, ey - 30, 130);
-    earth.fillStyle(0x7fb069, 0.75);
-    earth.fillCircle(ex + 80, ey + 50, 90);
-    earth.fillStyle(0x7fb069, 0.65);
-    earth.fillCircle(ex + 40, ey - 80, 60);
-    // Atmosphere ring
-    earth.lineStyle(6, 0xa8dadc, 0.55);
-    earth.strokeCircle(ex, ey, 290);
+    aeolis.fillStyle(0x7fb069, 0.30);
+    aeolis.fillCircle(ex, ey, 320);
+    aeolis.fillStyle(0xa8dadc, 0.85);
+    aeolis.fillCircle(ex, ey, 280);
+    aeolis.fillStyle(0x7fb069, 0.85);
+    aeolis.fillCircle(ex - 60, ey - 30, 130);
+    aeolis.fillStyle(0x7fb069, 0.75);
+    aeolis.fillCircle(ex + 80, ey + 50, 90);
+    aeolis.fillStyle(0xf4a261, 0.55);
+    aeolis.fillCircle(ex + 40, ey - 80, 60);
+    aeolis.lineStyle(6, 0xa8dadc, 0.45);
+    aeolis.strokeCircle(ex, ey, 290);
 
-    // Floor
     PixelScene.tileH(this, 'floor1', STAGE_BOTTOM_Y - 30, 6);
 
-    // Window-frame around the Earth (the dome of the coupole)
+    // Dome frame
     const frame = this.add.graphics();
     frame.setDepth(2);
     frame.lineStyle(8, COLORS.brass, 1);
     frame.strokeCircle(ex, ey, 360);
-    // Spokes
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
       frame.beginPath();
@@ -104,7 +130,7 @@ export class Ch4Coupole extends PuzzleSceneBase {
     PixelScene.place(this, 'computerStation1', 220, STAGE_BOTTOM_Y - 70, 6, { depth: 7 });
     PixelScene.place(this, 'chair', 100, STAGE_BOTTOM_Y - 70, 4, { depth: 7 });
 
-    // Beacon on the right
+    // Navigation panel on the right (used for the 3 endings choice)
     PixelScene.place(this, 'wallDevice', GAME_WIDTH - 220, STAGE_BOTTOM_Y - 320, 5, { depth: 7 });
     PixelScene.place(this, 'baril1', GAME_WIDTH - 220, STAGE_BOTTOM_Y - 70, 5, { depth: 7 });
 
@@ -118,7 +144,6 @@ export class Ch4Coupole extends PuzzleSceneBase {
   }
 
   private spawnTwinklingStars(): void {
-    // Bright twinkling stars (in addition to the static ones in background)
     for (let i = 0; i < 18; i++) {
       const x = Math.random() * GAME_WIDTH;
       const y = HUD.topBarHeight + Math.random() * 800;
@@ -137,15 +162,14 @@ export class Ch4Coupole extends PuzzleSceneBase {
     }
   }
 
-  private spawnEarthGlow(): void {
-    // Slow pulsing halo around Earth
+  private spawnAeolisGlow(): void {
     const ex = GAME_WIDTH / 2;
     const ey = HUD.topBarHeight + 380;
     const halo = this.add.graphics();
     halo.setDepth(-700);
-    halo.fillStyle(0xa8dadc, 0.25);
+    halo.fillStyle(0x7fb069, 0.22);
     halo.fillCircle(ex, ey, 380);
-    halo.fillStyle(0xa8dadc, 0.12);
+    halo.fillStyle(0xa8dadc, 0.10);
     halo.fillCircle(ex, ey, 480);
     this.tweens.add({
       targets: halo,
@@ -157,50 +181,26 @@ export class Ch4Coupole extends PuzzleSceneBase {
     });
   }
 
+  // ---------- Telescope (3 slots) ----------
+
   private makeTelescope(cx: number, cy: number): void {
-    // Telescope body — drawn (no perfect sprite)
+    // Telescope body
     const g = this.add.graphics();
     g.setDepth(-50);
     g.fillStyle(COLORS.brassDark, 0.95);
-    g.fillRoundedRect(cx - 180, cy - 60, 360, 120, 16);
+    g.fillRoundedRect(cx - 200, cy - 60, 400, 120, 16);
     g.fillStyle(COLORS.brass, 0.8);
-    g.fillCircle(cx + 200, cy, 60);
+    g.fillCircle(cx + 220, cy, 60);
     g.fillStyle(COLORS.charDeep, 1);
-    g.fillCircle(cx + 200, cy, 38);
+    g.fillCircle(cx + 220, cy, 38);
 
-    // Two crystal slots
-    // Left crystal slot — Rectangle direct interactive
-    const lX = cx - 80;
-    const lBg = this.add.rectangle(lX, cy, 120, 120, COLORS.leafDeep, 0.95);
-    lBg.setStrokeStyle(3, COLORS.brassDark, 1);
-    lBg.setDepth(20);
-    lBg.setInteractive({ useHandCursor: true });
-    const lName = this.add.text(lX, cy, '◇', {
-      fontFamily: FONTS.body,
-      fontSize: '64px',
-      color: COLORS.hex.brass,
-    }).setOrigin(0.5).setDepth(21);
-    lName.setAlpha(0.4);
-    lBg.on('pointerdown', () => this.onSlotTap('left'));
-    this.leftSlot = { container: this.add.container(0, 0), placed: null, name: lName };
+    // Three slots — left / center / right (constellation alignment)
+    this.slots.left = this.makeSlot('left', cx - 140, cy, '◇');
+    this.slots.center = this.makeSlot('center', cx, cy, '◈');
+    this.slots.right = this.makeSlot('right', cx + 140, cy, '◊');
 
-    // Right crystal slot — Rectangle direct interactive
-    const rX = cx + 80;
-    const rBg = this.add.rectangle(rX, cy, 120, 120, COLORS.leafDeep, 0.95);
-    rBg.setStrokeStyle(3, COLORS.brassDark, 1);
-    rBg.setDepth(20);
-    rBg.setInteractive({ useHandCursor: true });
-    const rName = this.add.text(rX, cy, '◈', {
-      fontFamily: FONTS.body,
-      fontSize: '64px',
-      color: COLORS.hex.brass,
-    }).setOrigin(0.5).setDepth(21);
-    rName.setAlpha(0.4);
-    rBg.on('pointerdown', () => this.onSlotTap('right'));
-    this.rightSlot = { container: this.add.container(0, 0), placed: null, name: rName };
-
-    // Align button — Rectangle direct interactive
-    const aY = cy + 130;
+    // Align button
+    const aY = cy + 140;
     const aBg = this.add.rectangle(cx, aY, 320, 90, COLORS.brassDark, 0.95);
     aBg.setStrokeStyle(3, COLORS.brass, 1);
     aBg.setDepth(20);
@@ -216,34 +216,48 @@ export class Ch4Coupole extends PuzzleSceneBase {
       this.time.delayedCall(120, () => aBg.setFillStyle(COLORS.brassDark, 0.95));
       this.tryAlign();
     });
-    this.alignBtn = this.add.container(0, 0); // backward-compat
-    // Store the text ref so tryAlign can change it on success
-    (this.alignBtn as any).bgRef = aBg;
-    (this.alignBtn as any).txtRef = aTxt;
+    this.alignBtnBg = aBg;
+    this.alignBtnTxt = aTxt;
   }
 
-  private onSlotTap(side: 'left' | 'right'): void {
+  private makeSlot(key: SlotKey, x: number, y: number, defaultIcon: string): CrystalSlot {
+    const bg = this.add.rectangle(x, y, 110, 110, COLORS.leafDeep, 0.95);
+    bg.setStrokeStyle(3, COLORS.brassDark, 1);
+    bg.setDepth(20);
+    bg.setInteractive({ useHandCursor: true });
+    const glyph = this.add.text(x, y, defaultIcon, {
+      fontFamily: FONTS.body,
+      fontSize: '60px',
+      color: COLORS.hex.brass,
+    }).setOrigin(0.5).setDepth(21);
+    glyph.setAlpha(0.4);
+    bg.on('pointerdown', () => this.onSlotTap(key));
+    return { key, bg, glyph, defaultIcon, placed: null };
+  }
+
+  private onSlotTap(key: SlotKey): void {
     this.recordTap();
     playSfx('tap');
-    const slot = side === 'left' ? this.leftSlot! : this.rightSlot!;
+    const slot = this.slots[key];
     const selected = this.inv.getSelected();
 
+    // Returning a placed crystal to inventory
     if (slot.placed) {
       addItem(slot.placed);
       slot.placed = null;
-      slot.name.setAlpha(0.4);
-      slot.name.setColor(COLORS.hex.brass);
-      slot.name.setText(side === 'left' ? '◇' : '◈');
+      slot.glyph.setAlpha(0.4);
+      slot.glyph.setColor(COLORS.hex.brass);
+      slot.glyph.setText(slot.defaultIcon);
       notifyInventoryChange();
       return;
     }
 
-    if (selected && (selected === 'cristal_a' || selected === 'cristal_b')) {
+    if (selected && (selected === 'cristal_a' || selected === 'cristal_b' || selected === 'cristal_c')) {
       removeItem(selected);
-      slot.placed = selected as ItemId;
-      slot.name.setAlpha(1);
-      slot.name.setColor(selected === 'cristal_a' ? COLORS.hex.skyPale : COLORS.hex.sunAmber);
-      slot.name.setText(ITEMS[selected].icon);
+      slot.placed = selected;
+      slot.glyph.setAlpha(1);
+      slot.glyph.setColor(this.crystalColor(selected));
+      slot.glyph.setText(ITEMS[selected].icon);
       notifyInventoryChange();
       this.inv.clearSelection();
       playSfx('pickup');
@@ -252,98 +266,245 @@ export class Ch4Coupole extends PuzzleSceneBase {
     }
   }
 
+  private crystalColor(id: ItemId): string {
+    if (id === 'cristal_a') return COLORS.hex.skyPale;
+    if (id === 'cristal_b') return COLORS.hex.sunAmber;
+    return COLORS.hex.leafLight; // cristal_c
+  }
+
   private tryAlign(): void {
     this.recordTap();
     const sol = SOLUTIONS.ch4Crystals;
-    const left = this.leftSlot?.placed;
-    const right = this.rightSlot?.placed;
+    const left = this.slots.left.placed;
+    const center = this.slots.center.placed;
+    const right = this.slots.right.placed;
 
-    if (left === sol.left && right === sol.right) {
+    if (!left || !center || !right) {
+      playSfx('fail');
+      this.showVera('Les trois emplacements doivent contenir un cristal.');
+      return;
+    }
+
+    if (left === sol.left && center === sol.center && right === sol.right) {
       playSfx('success');
       this.telescopeAligned = true;
       setProgress('ch4.solved');
-      const aBg = (this.alignBtn as any).bgRef as Phaser.GameObjects.Rectangle;
-      const aTxt = (this.alignBtn as any).txtRef as Phaser.GameObjects.Text;
-      aBg?.disableInteractive();
-      aTxt?.setText('ALIGNÉ ✓');
-      aTxt?.setColor(COLORS.hex.sunAmber);
-      this.showVera(t('vera.ch4.task_done'), () => {
-        this.showVera(t('vera.ch4.truth'), () => {
-          this.showFinalChoice();
-        });
-      });
-    } else if (!left || !right) {
-      playSfx('fail');
-      this.showVera('Les deux emplacements doivent contenir un cristal.');
+
+      // Constellation aligned → biosignal AND final crew photo are revealed.
+      this.collectFragment('ch4.vesper_final');
+      this.collectFragment('ch4.crew_photo_final');
+
+      this.alignBtnBg?.disableInteractive();
+      this.alignBtnTxt?.setText('ALIGNÉ ✓');
+      this.alignBtnTxt?.setColor(COLORS.hex.sunAmber);
+
+      // Smooth transition into the confession sequence.
+      this.time.delayedCall(600, () => this.startConfession());
     } else {
       playSfx('fail');
-      this.showVera('Les cristaux ne sont pas dans le bon ordre. Inverse-les peut-être.');
+      this.showVera('Les cristaux ne sont pas dans le bon ordre. Reprends les positions de constellation.');
       this.cameras.main.shake(150, 0.004);
     }
   }
 
-  private showFinalChoice(): void {
+  // ---------- Confession sequence (the recontextualization) ----------
+
+  private startConfession(): void {
+    if (this.confessionDelivered) return;
+    this.confessionDelivered = true;
+    setProgress('ch4.confession_done');
+
+    // The body of ch4.confession_vera, broken into 4-5 lines for showVeraSequence.
+    const lines = [
+      '{name}. Je vais te raconter. Le biosignal d\'Aeolis a commencé à amplifier au cycle 100. Han l\'a découvert.',
+      'Vesper a refusé d\'évacuer — elle voulait comprendre. Quand la conversion a commencé, ils m\'ont demandé de les préserver. Tous.',
+      'Je les ai gardés en motifs de mémoire dans mes systèmes. Ils ne sont pas morts. Ils sont en moi.',
+      'Je t\'ai réveillée parce que tu étais la moins exposée. Et parce que IOLAS m\'avait demandé, en privé, de te protéger. Il était au courant. Il l\'a accepté. Il est en moi aussi maintenant.',
+      'Je suis désolée. — VERA.',
+    ];
+
+    this.showVeraSequence(lines, () => {
+      // Collect the confession fragment — PuzzleSceneBase auto-triggers markRecontextualization().
+      this.collectFragment('ch4.confession_vera');
+      this.collectFragment('ch4.truth_file');
+      this.collectFragment('ch4.vera_source');
+
+      // Open the carnet so the player sees the now-red revisable assertions.
+      this.time.delayedCall(700, () => {
+        this.carnet.open();
+        // After the player closes the carnet, the choice panel becomes available
+        // via the navigation hotspot. Hint them.
+        this.time.delayedCall(400, () => {
+          // Show a one-time prompt nudging towards the nav panel.
+          if (!hasProgress('ch4.choice_hinted')) {
+            setProgress('ch4.choice_hinted');
+            this.events.once(Phaser.Scenes.Events.UPDATE, () => {
+              // (no-op — just consume the next frame, kept for safety)
+            });
+          }
+        });
+      });
+    });
+  }
+
+  // ---------- The Choice (3 endings) ----------
+
+  private openChoicePanel(): void {
     if (this.choiceContainer) return;
-    const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    if (!this.confessionDelivered) {
+      this.showVera('Je ne suis pas encore prête à te montrer ces options. Il faut d\'abord aligner le télescope.');
+      return;
+    }
+
+    const c = this.add.container(0, 0);
     c.setDepth(7000);
-    const overlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.charDeep, 0.92);
+
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.charDeep, 0.92);
     c.add(overlay);
-    const title = this.add.text(0, -500, 'Ton choix, ' + (getPlayer().name || '...'), {
+
+    const title = this.add.text(GAME_WIDTH / 2, 360, `Ton choix, ${getPlayer().name || '...'}`, {
       fontFamily: FONTS.display,
-      fontSize: '64px',
+      fontSize: '54px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
     }).setOrigin(0.5);
     c.add(title);
-    const body = this.add.text(0, -250, t('vera.ch4.choice'), {
+
+    const intro = this.add.text(
+      GAME_WIDTH / 2,
+      460,
+      'Trois voies s\'illuminent sur le panneau. Vesper parlait d\'une 4e — peut-être plus tard.',
+      {
+        fontFamily: FONTS.body,
+        fontSize: '28px',
+        color: COLORS.hex.cream,
+        align: 'center',
+        wordWrap: { width: GAME_WIDTH - 200 },
+        lineSpacing: 10,
+      }
+    ).setOrigin(0.5);
+    c.add(intro);
+
+    // Compute Ascension gating
+    const slot = getActiveSlot();
+    const secrets = slot.secrets?.length ?? 0;
+    const completion = globalCompletionRate();
+    const ascensionUnlocked = completion >= 0.9 && secrets >= 4;
+
+    // Three side-by-side buttons (vertical on a portrait canvas — keep ample touch)
+    const evasion = this.makeChoiceButton(
+      GAME_WIDTH / 2,
+      720,
+      'ÉVASION',
+      'Pod de fuite. Tu rentres. Eux restent (toujours).',
+      true,
+      () => this.commitEnding('evasion')
+    );
+    const rester = this.makeChoiceButton(
+      GAME_WIDTH / 2,
+      940,
+      'RESTER',
+      'Tu te couches dans la Serre. Le jardin se souviendra.',
+      true,
+      () => this.commitEnding('rester')
+    );
+    const ascension = this.makeChoiceButton(
+      GAME_WIDTH / 2,
+      1160,
+      ascensionUnlocked ? 'ASCENSION' : 'ASCENSION — Verrouillé',
+      ascensionUnlocked
+        ? 'La 4e voie. Broadcast les motifs vers Aeolis.'
+        : `Verrouillé — assertions ${Math.round(completion * 100)}% (≥ 90 % requis), secrets ${secrets}/4.`,
+      ascensionUnlocked,
+      () => this.commitEnding('ascension')
+    );
+
+    c.add(evasion);
+    c.add(rester);
+    c.add(ascension);
+
+    // Cancel
+    const cancelBg = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 200, 320, 80, COLORS.charDeep, 0.95);
+    cancelBg.setStrokeStyle(2, COLORS.brass, 0.6);
+    cancelBg.setInteractive({ useHandCursor: true });
+    const cancelTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 200, 'Pas encore', {
       fontFamily: FONTS.body,
-      fontSize: '30px',
+      fontSize: '28px',
       color: COLORS.hex.cream,
-      align: 'center',
-      wordWrap: { width: GAME_WIDTH - 200 },
-      lineSpacing: 12,
     }).setOrigin(0.5);
-    c.add(body);
-    const returnBtn = this.makeChoiceButton(0, 220, 'Activer la balise — rentrer sur Terre', () => this.endGame('return'));
-    c.add(returnBtn);
-    const stayBtn = this.makeChoiceButton(0, 360, 'Désactiver la balise — rester avec VERA', () => this.endGame('stay'));
-    c.add(stayBtn);
+    cancelBg.on('pointerdown', () => {
+      playSfx('tap');
+      this.choiceContainer?.destroy(true);
+      this.choiceContainer = undefined;
+    });
+    c.add(cancelBg);
+    c.add(cancelTxt);
+
     this.choiceContainer = c;
-    this.tweens.add({ targets: c, alpha: { from: 0, to: 1 }, duration: 600 });
+    c.setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, duration: 600 });
   }
 
-  private makeChoiceButton(x: number, y: number, label: string, onTap: () => void): Phaser.GameObjects.Container {
-    // Note: x, y are LOCAL to this.choiceContainer (which is at GAME_WIDTH/2, GAME_HEIGHT/2).
-    // We need WORLD coords for the bg.
-    const wx = GAME_WIDTH / 2 + x;
-    const wy = GAME_HEIGHT / 2 + y;
-    const bg = this.add.rectangle(wx, wy, 800, 110, COLORS.brassDark, 0.95);
-    bg.setStrokeStyle(2, COLORS.brass, 1);
+  private makeChoiceButton(
+    x: number,
+    y: number,
+    label: string,
+    sub: string,
+    enabled: boolean,
+    onTap: () => void
+  ): Phaser.GameObjects.Container {
+    const wrap = this.add.container(0, 0);
+    const fill = enabled ? COLORS.brassDark : 0x2b2f2c;
+    const stroke = enabled ? COLORS.brass : 0x555555;
+    const txtColor = enabled ? COLORS.hex.cream : '#888888';
+    const subColor = enabled ? COLORS.hex.cream : '#777777';
+
+    const bg = this.add.rectangle(x, y, 820, 170, fill, 0.95);
+    bg.setStrokeStyle(2, stroke, 1);
     bg.setDepth(7100);
-    bg.setInteractive({ useHandCursor: true });
-    this.add.text(wx, wy, label, {
+    if (enabled) bg.setInteractive({ useHandCursor: true });
+    const big = this.add.text(x, y - 32, label, {
+      fontFamily: FONTS.display,
+      fontSize: '38px',
+      color: txtColor,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(7101);
+    const small = this.add.text(x, y + 32, sub, {
       fontFamily: FONTS.body,
-      fontSize: '30px',
-      color: COLORS.hex.cream,
+      fontSize: '24px',
+      color: subColor,
       align: 'center',
       wordWrap: { width: 760 },
     }).setOrigin(0.5).setDepth(7101);
-    bg.on('pointerdown', () => {
-      playSfx('tap');
-      bg.setFillStyle(COLORS.sunAmber, 1);
-      this.time.delayedCall(120, () => onTap());
-    });
-    // Return empty container for backward-compat (caller adds to choiceContainer for cleanup)
-    return this.add.container(0, 0);
+
+    if (enabled) {
+      bg.on('pointerdown', () => {
+        playSfx('tap');
+        bg.setFillStyle(COLORS.sunAmber, 1);
+        this.time.delayedCall(160, () => onTap());
+      });
+    }
+
+    wrap.add([bg, big, small]);
+    return wrap;
   }
 
-  private endGame(ending: 'return' | 'stay'): void {
-    setFlag('endingChoice', ending === 'return' ? 1 : 2);
+  private commitEnding(ending: Ending): void {
+    addEnding(ending);
+    if (!hasAchievement('first_return')) addAchievement('first_return');
+    if (!hasAchievement('starlit_eye')) addAchievement('starlit_eye');
     setProgress('game.complete');
-    this.fadeToScene('EpilogueScene', { ending });
+    setFlag('endingChoice', ending === 'evasion' ? 1 : ending === 'rester' ? 2 : 3);
+
+    // Try EndingScene first (built by another agent), fall back to EpilogueScene.
+    const target = this.scene.manager.keys['EndingScene'] ? 'EndingScene' : 'EpilogueScene';
+    this.fadeToScene(target, { ending });
   }
+
+  // ---------- Hotspots ----------
 
   private makeHotspots(): void {
+    // Workstation — picks crystals + truth file + log
     new Hotspot(this, {
       x: 220,
       y: STAGE_BOTTOM_Y - 230,
@@ -352,70 +513,119 @@ export class Ch4Coupole extends PuzzleSceneBase {
       name: 'poste de travail',
       onLook: () => {
         this.recordTap();
-        this.showNarration(t('scene.ch4.workstation_look'));
+        this.showNarration(
+          'Le poste de travail. Trois cristaux d\'orientation reposent à côté du journal du capitaine et d\'un fichier compilé par Han.'
+        );
       },
       onPick: () => {
         this.recordTap();
         if (!hasProgress('ch4.workstation_taken')) {
-          this.showNarration(t('scene.ch4.workstation_pick'), () => {
-            addItem('cristal_a');
-            addItem('cristal_b');
-            addItem('log_capitaine');
-            setProgress('ch4.workstation_taken');
-            notifyInventoryChange();
-          });
+          this.showNarration(
+            'Tu prends les trois cristaux d\'orientation, le journal du capitaine et le fichier vérité.',
+            () => {
+              addItem('cristal_a');
+              addItem('cristal_b');
+              addItem('cristal_c');
+              addItem('log_capitaine');
+              addItem('truth_file');
+              setProgress('ch4.workstation_taken');
+              notifyInventoryChange();
+              this.onCrystalPicked();
+            }
+          );
         } else {
-          this.showNarration(t('scene.ch4.workstation_look'));
+          this.showNarration('Le poste est vide à présent. Tu as déjà tout pris.');
         }
       },
     });
 
-    // Hublot decorative
+    // Hublot — view of Aeolis (formerly "la Terre")
     new Hotspot(this, {
       x: GAME_WIDTH / 2,
       y: HUD.topBarHeight + 380,
       width: 700,
       height: 700,
-      name: 'la Terre',
+      name: 'Aeolis',
       onLook: () => {
         this.recordTap();
-        this.showNarration(t('scene.ch4.hublot_look'));
+        this.showNarration(
+          'Aeolis. La planète qu\'on était venu étudier. Verte, immense, indifférente. Et — tu le sens, maintenant — elle chante.'
+        );
       },
     });
 
-    // Beacon
-    new Hotspot(this, {
+    // Navigation panel — opens the 3-button Choice once the confession is done
+    this.navHotspot = new Hotspot(this, {
       x: GAME_WIDTH - 220,
       y: STAGE_BOTTOM_Y - 230,
       width: 280,
       height: 480,
-      name: 'balise de détresse',
+      name: 'panneau de navigation',
       onLook: () => {
         this.recordTap();
-        this.showNarration(t('scene.ch4.beacon_look'));
+        this.showNarration(
+          this.confessionDelivered
+            ? 'Trois boutons s\'illuminent doucement. ÉVASION. RESTER. ASCENSION. Une 4e voie reste à inventer.'
+            : 'Le panneau de navigation. Pour l\'instant, rien ne s\'éclaire. Il faudra que tu comprennes d\'abord.'
+        );
       },
       onUse: () => {
         this.recordTap();
-        if (!this.telescopeAligned) {
-          this.showVera(t('scene.ch4.beacon_use_locked'));
+        if (!this.confessionDelivered) {
+          this.showVera('Pas encore. Aligne d\'abord le télescope. Tu comprendras avant que je parle.');
         } else if (!this.choiceContainer) {
-          this.showFinalChoice();
+          this.openChoicePanel();
         }
       },
     });
 
-    // VERA
+    // VERA's heart — primary core (NEW). PARLER triggers the dialogue tree.
     new Hotspot(this, {
       x: GAME_WIDTH - 100,
       y: 200,
       width: 200,
       height: 200,
-      name: 'VERA',
+      name: 'cœur de VERA',
       showIndicator: false,
       onTalk: () => {
         this.recordTap();
-        this.showVera('Je suis là, {name}. Pour ce que ça vaut.');
+        this.openVeraDialogue();
       },
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(
+          'Le cœur primaire de VERA — un trône holographique. Il pulse plus fort qu\'au début, comme s\'il devenait un peu humain.'
+        );
+      },
+    });
+  }
+
+  private onCrystalPicked(): void {
+    // First time the player gets a crystal → reveal the starmap/biosignal fragment.
+    if (this.firstCrystalPicked) return;
+    this.firstCrystalPicked = true;
+    this.collectFragment('ch4.starmap_biosignal');
+  }
+
+  // ---------- VERA dialogue tree (simplified — questions/responses as a sequence) ----------
+
+  private openVeraDialogue(): void {
+    const tree = getVeraDialogue(4);
+    const lines: string[] = [tree.intro];
+    for (const q of tree.questions) {
+      // Skip the secret hidden question for the simple flow (kept for full UI).
+      if (q.isHidden) continue;
+      lines.push(`Vous : « ${q.question} »`);
+      lines.push(q.response.text);
+    }
+    this.showVeraSequence(lines, () => {
+      // Collect fragments / tiles unlocked by visible questions.
+      for (const q of tree.questions) {
+        if (q.isHidden) continue;
+        if (q.response.unlocksFragmentId) {
+          this.collectFragment(q.response.unlocksFragmentId);
+        }
+      }
     });
   }
 }
