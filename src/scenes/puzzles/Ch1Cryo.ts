@@ -336,21 +336,20 @@ export class Ch1Cryo extends PuzzleSceneBase {
       onUse: pickFrame,
     });
 
-    // Terminal — primary interactable: ANY verb opens the keypad
-    // (LucasArts pattern: critical objects always respond, even on Regarder)
+    // Terminal — ALWAYS opens the keypad on any verb tap. No conditional gate.
     const openTerminal = () => {
       this.recordTap();
-      if (!this.veraGreeted) return;
       this.openKeypad();
     };
     new Hotspot(this, {
       x: GAME_WIDTH - 180,
-      y: STAGE_BOTTOM_Y - 230,
-      width: 380,
-      height: 480,
+      y: STAGE_BOTTOM_Y - 280,
+      width: 460,
+      height: 580,
       name: 'terminal cryo',
       onLook: openTerminal,
       onUse: openTerminal,
+      onTalk: openTerminal,
       onPick: () => this.showNarration('Le terminal est fixé au sol. Tu peux l\'utiliser, pas le prendre.'),
     });
 

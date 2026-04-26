@@ -9,77 +9,62 @@ export interface HotspotConfig {
   y: number;
   width?: number;
   height?: number;
-  name: string;                    // Required — shown in action label
-  label?: string;                  // Legacy alias, ignored
+  name: string;
+  label?: string;                  // legacy alias
   shape?: 'rect' | 'circle';
-  glow?: boolean;                  // Legacy, ignored
-  onTap?: () => void;              // Legacy single-action handler (used if no verb handlers)
-  showIndicator?: boolean;         // Show subtle "tap me" dot
-  // Per-verb handlers — return true if handled, false to fall through to default
+  showIndicator?: boolean;
+  glow?: boolean;
+  onTap?: () => void;              // legacy single-action handler
   onLook?: () => void;
   onPick?: () => void;
-  onUse?: (item?: ItemId) => void; // item present when "use X with this"
+  onUse?: (item?: ItemId) => void;
   onTalk?: () => void;
-  // Fallback for unsupported verbs
   defaultMessage?: string;
 }
 
 /**
- * Hotspot: an interactive zone with a name and verb-based handlers.
- * Tap shows the name in ActionLabel and dispatches the active verb.
+ * Hotspot — uses the rectangle ITSELF as the interactive object (no Container nesting,
+ * no coordinate offsets). Indicator dot is added separately to the scene.
  */
-export class Hotspot extends Phaser.GameObjects.Container {
-  private indicator: Phaser.GameObjects.Container | null = null;
-  private highlight: Phaser.GameObjects.Rectangle;
-  private highlightTween: Phaser.Tweens.Tween | null = null;
+export class Hotspot {
+  public bg: Phaser.GameObjects.Rectangle;
+  private indicatorOuter?: Phaser.GameObjects.Arc;
+  private indicatorInner?: Phaser.GameObjects.Arc;
   public config: HotspotConfig;
 
   constructor(scene: Phaser.Scene, config: HotspotConfig) {
-    super(scene, config.x, config.y);
     this.config = config;
 
     const w = Math.max(config.width ?? HUD.touchTargetMin, HUD.touchTargetMin);
     const h = Math.max(config.height ?? HUD.touchTargetMin, HUD.touchTargetMin);
 
-    // Highlight rect (visible briefly on tap, on hover, or always-on for active target)
-    this.highlight = scene.add.rectangle(0, 0, w, h, COLORS.sunAmber, 0);
-    this.highlight.setStrokeStyle(4, COLORS.sunAmber, 0);
-    this.add(this.highlight);
+    // Highlight rect — interactive, exactly matches the visual zone.
+    this.bg = scene.add.rectangle(config.x, config.y, w, h, COLORS.sunAmber, 0);
+    this.bg.setStrokeStyle(0, COLORS.sunAmber, 0);
+    this.bg.setInteractive({ useHandCursor: true });
 
-    this.setSize(w, h);
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
-      Phaser.Geom.Rectangle.Contains
-    );
+    this.bg.on('pointerover', () => this.showHighlight(0.2));
+    this.bg.on('pointerout', () => this.fadeHighlight());
+    this.bg.on('pointerdown', () => this.onTap());
 
-    this.on('pointerover', () => this.showHighlight(0.2));
-    this.on('pointerout', () => this.fadeHighlight());
-    this.on('pointerdown', () => this.onTap());
-
-    if (config.showIndicator !== false) this.addIndicator();
-
-    scene.add.existing(this);
+    if (config.showIndicator !== false) this.addIndicator(scene);
   }
 
-  private addIndicator(): void {
-    // Visible pulsing dot — orange ring + bright inner dot
-    const dot = this.scene.add.container(0, 0);
-    const outer = this.scene.add.circle(0, 0, 18, COLORS.sunAmber, 0).setStrokeStyle(4, COLORS.sunAmber, 1);
-    const inner = this.scene.add.circle(0, 0, 10, COLORS.sunAmber, 1);
-    dot.add([outer, inner]);
-    this.add(dot);
-    this.indicator = dot;
+  private addIndicator(scene: Phaser.Scene): void {
+    this.indicatorOuter = scene.add.circle(this.config.x, this.config.y, 18, COLORS.sunAmber, 0)
+      .setStrokeStyle(4, COLORS.sunAmber, 1);
+    this.indicatorInner = scene.add.circle(this.config.x, this.config.y, 10, COLORS.sunAmber, 1);
 
-    this.scene.tweens.add({
-      targets: outer,
+    scene.tweens.add({
+      targets: this.indicatorOuter,
       scale: { from: 1, to: 2.2 },
       alpha: { from: 1, to: 0 },
       duration: 1400,
       repeat: -1,
       ease: 'Sine.easeOut',
     });
-    this.scene.tweens.add({
-      targets: inner,
+    scene.tweens.add({
+      targets: this.indicatorInner,
       alpha: { from: 1, to: 0.5 },
       duration: 700,
       yoyo: true,
@@ -87,51 +72,56 @@ export class Hotspot extends Phaser.GameObjects.Container {
     });
   }
 
-  /** Flash the hotspot box visibly. Used on scene entry to show all interactables. */
-  flashIntro(): void {
-    this.showHighlight(0.4);
-    this.scene.tweens.add({
-      targets: this.highlight,
-      alpha: { from: 0.4, to: 0 },
-      duration: 1200,
-      delay: 0,
-      onComplete: () => this.fadeHighlight(),
-    });
-  }
-
   hideIndicator(): void {
-    if (this.indicator) {
-      this.indicator.setVisible(false);
-    }
+    this.indicatorOuter?.setVisible(false);
+    this.indicatorInner?.setVisible(false);
   }
 
   showHighlight(alpha = 0.3): void {
-    this.highlight.setStrokeStyle(4, COLORS.sunAmber, 1);
-    this.highlight.setFillStyle(COLORS.sunAmber, alpha);
+    this.bg.setStrokeStyle(4, COLORS.sunAmber, 1);
+    this.bg.setFillStyle(COLORS.sunAmber, alpha);
   }
 
   fadeHighlight(): void {
-    this.highlight.setStrokeStyle(0, COLORS.sunAmber, 0);
-    this.highlight.setFillStyle(COLORS.sunAmber, 0);
+    this.bg.setStrokeStyle(0, COLORS.sunAmber, 0);
+    this.bg.setFillStyle(COLORS.sunAmber, 0);
   }
 
   pulse(): void {
-    this.scene.tweens.add({
-      targets: this.highlight,
+    const scene = this.bg.scene;
+    scene.tweens.add({
+      targets: this.bg,
       alpha: { from: 0.6, to: 0 },
       duration: 320,
       ease: 'Cubic.easeOut',
       onStart: () => {
-        this.highlight.setFillStyle(COLORS.sunAmber, 0.6);
+        this.bg.setFillStyle(COLORS.sunAmber, 0.6);
       },
     });
+  }
+
+  flashIntro(): void {
+    this.showHighlight(0.4);
+    this.bg.scene.tweens.add({
+      targets: this.bg,
+      alpha: { from: 0.4, to: 0 },
+      duration: 1200,
+      onComplete: () => this.fadeHighlight(),
+    });
+  }
+
+  /** Legacy compatibility */
+  startGlow(): void {
+    this.showHighlight(0.4);
+  }
+  stopGlow(): void {
+    this.fadeHighlight();
   }
 
   private onTap(): void {
     playSfx('tap');
     this.pulse();
 
-    // Set this as target
     const target: VerbTarget = {
       kind: 'hotspot',
       id: this.config.name,
@@ -139,14 +129,12 @@ export class Hotspot extends Phaser.GameObjects.Container {
     };
     setTarget(target);
 
-    // Dispatch active verb
     const verb = getActiveVerb();
     this.handleVerb(verb);
   }
 
   private handleVerb(verb: Verb): void {
     const c = this.config;
-    // Legacy fallback to onTap when no verb-specific handlers
     if (!c.onLook && !c.onPick && !c.onUse && !c.onTalk && c.onTap) {
       c.onTap();
       return;
@@ -171,21 +159,13 @@ export class Hotspot extends Phaser.GameObjects.Container {
     }
   }
 
-  /** Legacy compatibility: used to be the glow API */
-  startGlow(): void {
-    this.showHighlight(0.4);
-  }
-  stopGlow(): void {
-    this.fadeHighlight();
-  }
-
   private fallback(msg: string): void {
-    // Emit event the scene can listen to
-    this.scene.events.emit('hotspot-fallback', { hotspot: this, message: msg });
+    this.bg.scene.events.emit('hotspot-fallback', { hotspot: this, message: msg });
   }
 
-  destroy(fromScene?: boolean): void {
-    if (this.highlightTween) this.highlightTween.stop();
-    super.destroy(fromScene);
+  destroy(): void {
+    this.bg.destroy();
+    this.indicatorOuter?.destroy();
+    this.indicatorInner?.destroy();
   }
 }
