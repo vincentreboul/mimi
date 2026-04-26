@@ -1,12 +1,14 @@
 // Save state persistence — single localStorage key, JSON blob
-const KEY = 'mimi.save.v1';
+const KEY = 'kora.save.v2';
 
 export type ChapterId = 1 | 2 | 3 | 4;
 export type HintLevel = 'normal' | 'plus' | 'minus';
 export type FontChoice = 'inter' | 'atkinson';
+export type AgeBracket = 'kid' | 'teen' | 'young' | 'adult' | 'senior'; // 8-12 / 13-17 / 18-29 / 30-49 / 50+
+export type Gender = 'f' | 'm' | 'nb';
 
 export interface SaveState {
-  v: 1;
+  v: 2;
   scene: string;
   chapter: ChapterId;
   progress: Record<string, boolean>;
@@ -14,6 +16,11 @@ export interface SaveState {
   flags: Record<string, number>;
   startedAt: number;
   updatedAt: number;
+  player: {
+    name: string;
+    ageBracket: AgeBracket;
+    gender: Gender;
+  };
   settings: {
     musicVol: number;
     sfxVol: number;
@@ -26,7 +33,7 @@ export interface SaveState {
 
 export function defaultSave(): SaveState {
   return {
-    v: 1,
+    v: 2,
     scene: 'MenuScene',
     chapter: 1,
     progress: {},
@@ -38,6 +45,11 @@ export function defaultSave(): SaveState {
     },
     startedAt: Date.now(),
     updatedAt: Date.now(),
+    player: {
+      name: '',
+      ageBracket: 'teen',
+      gender: 'nb',
+    },
     settings: {
       musicVol: 0.6,
       sfxVol: 0.8,
@@ -57,7 +69,7 @@ export function loadSave(): SaveState {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as SaveState;
-      if (parsed?.v === 1) {
+      if (parsed?.v === 2) {
         _state = parsed;
         return parsed;
       }
@@ -129,4 +141,20 @@ export function setSetting<K extends keyof SaveState['settings']>(key: K, value:
   const s = getState();
   s.settings[key] = value;
   saveSave();
+}
+
+export function getPlayer() {
+  return getState().player;
+}
+
+export function setPlayer(name: string, ageBracket: AgeBracket, gender: Gender): void {
+  const s = getState();
+  s.player.name = name;
+  s.player.ageBracket = ageBracket;
+  s.player.gender = gender;
+  saveSave();
+}
+
+export function hasPlayer(): boolean {
+  return getState().player.name.length > 0;
 }

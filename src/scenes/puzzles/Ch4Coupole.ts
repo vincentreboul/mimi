@@ -1,18 +1,18 @@
 import * as Phaser from 'phaser';
-import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../../config';
+import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT, HUD, STAGE_BOTTOM_Y } from '../../config';
 import { PuzzleSceneBase } from './PuzzleSceneBase';
-import { SceneBackground } from '../../objects/SceneBackground';
+import { PixelScene } from '../../objects/PixelScene';
 import { Hotspot } from '../../objects/Hotspot';
 import { addItem, hasItem, removeItem, notifyInventoryChange } from '../../systems/inventory';
-import { setProgress, hasProgress, setFlag, getFlag } from '../../systems/save';
+import { setProgress, hasProgress, setFlag, getPlayer } from '../../systems/save';
 import { PUZZLE_IDS, SOLUTIONS } from '../../data/puzzles';
 import { t } from '../../systems/narrative';
 import { ITEMS, type ItemId } from '../../data/items';
 import { playSfx } from '../../systems/audio';
 
 export class Ch4Coupole extends PuzzleSceneBase {
-  private leftSlot?: { container: Phaser.GameObjects.Container; placed: ItemId | null; label: Phaser.GameObjects.Text };
-  private rightSlot?: { container: Phaser.GameObjects.Container; placed: ItemId | null; label: Phaser.GameObjects.Text };
+  private leftSlot?: { container: Phaser.GameObjects.Container; placed: ItemId | null; name: Phaser.GameObjects.Text };
+  private rightSlot?: { container: Phaser.GameObjects.Container; placed: ItemId | null; name: Phaser.GameObjects.Text };
   private alignBtn?: Phaser.GameObjects.Container;
   private telescopeAligned = false;
   private choiceContainer?: Phaser.GameObjects.Container;
@@ -28,77 +28,11 @@ export class Ch4Coupole extends PuzzleSceneBase {
 
   create(): void {
     this.cameras.main.fadeIn(700, 31, 77, 62);
-    SceneBackground.draw(this, 'coupole');
-
-    this.add.text(GAME_WIDTH / 2, 200, 'COUPOLE — Module D', {
-      fontFamily: FONTS.mono,
-      fontSize: '36px',
-      color: COLORS.hex.cream,
-    }).setOrigin(0.5);
-
+    this.composeBackground();
     this.setupHud(PUZZLE_IDS.ch4Crystals);
+    this.makeTelescope(GAME_WIDTH / 2, STAGE_BOTTOM_Y - 280);
+    this.makeHotspots();
 
-    // Workstation — gives crystals + log
-    this.drawWorkstation(220, GAME_HEIGHT - 800);
-    new Hotspot(this, {
-      x: 220,
-      y: GAME_HEIGHT - 800,
-      width: 280,
-      height: 240,
-      label: 'Poste de Léa',
-      onTap: () => {
-        this.recordTap();
-        if (!hasProgress('ch4.workstation_taken')) {
-          this.showNarration(t('scene.ch4.workstation'), () => {
-            addItem('cristal_a');
-            addItem('cristal_b');
-            addItem('log_capitaine');
-            setProgress('ch4.workstation_taken');
-            notifyInventoryChange();
-          });
-        } else {
-          this.showNarration(t('scene.ch4.workstation'));
-        }
-      },
-    });
-
-    // Telescope
-    this.makeTelescope(GAME_WIDTH / 2, GAME_HEIGHT - 1200);
-
-    // Hublot decorative
-    new Hotspot(this, {
-      x: GAME_WIDTH / 2,
-      y: 700,
-      width: 800,
-      height: 800,
-      label: 'Hublot principal',
-      onTap: () => {
-        this.recordTap();
-        this.showNarration(t('scene.ch4.hublot'));
-      },
-    });
-
-    // Beacon — only enabled after telescope aligned
-    this.drawBeacon(GAME_WIDTH - 220, GAME_HEIGHT - 800);
-    new Hotspot(this, {
-      x: GAME_WIDTH - 220,
-      y: GAME_HEIGHT - 800,
-      width: 220,
-      height: 240,
-      label: 'Balise',
-      onTap: () => {
-        this.recordTap();
-        if (!this.telescopeAligned) {
-          this.showVera('La balise n\'est pas alignée. Le télescope doit l\'être d\'abord.');
-        } else if (this.choiceContainer) {
-          // already showing choice
-        } else {
-          this.showFinalChoice();
-        }
-      },
-    });
-
-    // VERA welcome
     if (!hasProgress('ch4.vera_greeted')) {
       this.time.delayedCall(800, () => {
         this.showVeraSequence(
@@ -109,10 +43,80 @@ export class Ch4Coupole extends PuzzleSceneBase {
     }
   }
 
+  private composeBackground(): void {
+    // Deep space
+    PixelScene.stageBackground(this, 0x05080f);
+
+    // Stars
+    const stars = this.add.graphics();
+    stars.setDepth(-900);
+    stars.fillStyle(0xf4e9d8, 0.95);
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const y = Math.random() * (STAGE_BOTTOM_Y * 0.7);
+      stars.fillRect(x, y, 2, 2);
+    }
+
+    // Earth — large soft circle (drawn since no Earth sprite)
+    const earth = this.add.graphics();
+    earth.setDepth(-800);
+    const ex = GAME_WIDTH / 2;
+    const ey = HUD.topBarHeight + 380;
+    // Halo
+    earth.fillStyle(0xa8dadc, 0.35);
+    earth.fillCircle(ex, ey, 320);
+    // Earth body
+    earth.fillStyle(0xa8dadc, 0.95);
+    earth.fillCircle(ex, ey, 280);
+    // Continents (greens)
+    earth.fillStyle(0x7fb069, 0.85);
+    earth.fillCircle(ex - 60, ey - 30, 130);
+    earth.fillStyle(0x7fb069, 0.75);
+    earth.fillCircle(ex + 80, ey + 50, 90);
+    earth.fillStyle(0x7fb069, 0.65);
+    earth.fillCircle(ex + 40, ey - 80, 60);
+    // Atmosphere ring
+    earth.lineStyle(6, 0xa8dadc, 0.55);
+    earth.strokeCircle(ex, ey, 290);
+
+    // Floor
+    PixelScene.tileH(this, 'floor1', STAGE_BOTTOM_Y - 30, 6);
+
+    // Window-frame around the Earth (the dome of the coupole)
+    const frame = this.add.graphics();
+    frame.setDepth(2);
+    frame.lineStyle(8, COLORS.brass, 1);
+    frame.strokeCircle(ex, ey, 360);
+    // Spokes
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      frame.beginPath();
+      frame.moveTo(ex, ey);
+      frame.lineTo(ex + Math.cos(a) * 360, ey + Math.sin(a) * 360);
+      frame.strokePath();
+    }
+
+    // Workstation on the left
+    PixelScene.place(this, 'computerStation1', 220, STAGE_BOTTOM_Y - 70, 6, { depth: 7 });
+    PixelScene.place(this, 'chair', 100, STAGE_BOTTOM_Y - 70, 4, { depth: 7 });
+
+    // Beacon on the right
+    PixelScene.place(this, 'wallDevice', GAME_WIDTH - 220, STAGE_BOTTOM_Y - 320, 5, { depth: 7 });
+    PixelScene.place(this, 'baril1', GAME_WIDTH - 220, STAGE_BOTTOM_Y - 70, 5, { depth: 7 });
+
+    // Title
+    this.add.text(GAME_WIDTH / 2, HUD.topBarHeight + 30, 'MODULE D — COUPOLE', {
+      fontFamily: FONTS.mono,
+      fontSize: '32px',
+      color: COLORS.hex.cream,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(50);
+  }
+
   private makeTelescope(cx: number, cy: number): void {
+    // Telescope body — drawn (no perfect sprite)
     const g = this.add.graphics();
     g.setDepth(-50);
-    // Telescope body
     g.fillStyle(COLORS.brassDark, 0.95);
     g.fillRoundedRect(cx - 180, cy - 60, 360, 120, 16);
     g.fillStyle(COLORS.brass, 0.8);
@@ -122,48 +126,51 @@ export class Ch4Coupole extends PuzzleSceneBase {
 
     // Two crystal slots
     const leftSlotC = this.add.container(cx - 80, cy);
-    const lBg = this.add.rectangle(0, 0, 110, 110, COLORS.leafDeep, 0.95);
+    const lBg = this.add.rectangle(0, 0, 120, 120, COLORS.leafDeep, 0.95);
     lBg.setStrokeStyle(3, COLORS.brassDark, 1);
-    const lLabel = this.add.text(0, 0, '◇', {
+    const lName = this.add.text(0, 0, '◇', {
       fontFamily: FONTS.body,
-      fontSize: '52px',
+      fontSize: '64px',
       color: COLORS.hex.brass,
     }).setOrigin(0.5);
-    lLabel.setAlpha(0.4);
-    leftSlotC.add([lBg, lLabel]);
-    leftSlotC.setSize(110, 110);
-    leftSlotC.setInteractive(new Phaser.Geom.Rectangle(-55, -55, 110, 110), Phaser.Geom.Rectangle.Contains);
+    lName.setAlpha(0.4);
+    leftSlotC.add([lBg, lName]);
+    leftSlotC.setSize(120, 120);
+    leftSlotC.setInteractive(new Phaser.Geom.Rectangle(-60, -60, 120, 120), Phaser.Geom.Rectangle.Contains);
+    leftSlotC.setDepth(20);
     leftSlotC.on('pointerdown', () => this.onSlotTap('left'));
-    this.leftSlot = { container: leftSlotC, placed: null, label: lLabel };
+    this.leftSlot = { container: leftSlotC, placed: null, name: lName };
 
     const rightSlotC = this.add.container(cx + 80, cy);
-    const rBg = this.add.rectangle(0, 0, 110, 110, COLORS.leafDeep, 0.95);
+    const rBg = this.add.rectangle(0, 0, 120, 120, COLORS.leafDeep, 0.95);
     rBg.setStrokeStyle(3, COLORS.brassDark, 1);
-    const rLabel = this.add.text(0, 0, '◈', {
+    const rName = this.add.text(0, 0, '◈', {
       fontFamily: FONTS.body,
-      fontSize: '52px',
+      fontSize: '64px',
       color: COLORS.hex.brass,
     }).setOrigin(0.5);
-    rLabel.setAlpha(0.4);
-    rightSlotC.add([rBg, rLabel]);
-    rightSlotC.setSize(110, 110);
-    rightSlotC.setInteractive(new Phaser.Geom.Rectangle(-55, -55, 110, 110), Phaser.Geom.Rectangle.Contains);
+    rName.setAlpha(0.4);
+    rightSlotC.add([rBg, rName]);
+    rightSlotC.setSize(120, 120);
+    rightSlotC.setInteractive(new Phaser.Geom.Rectangle(-60, -60, 120, 120), Phaser.Geom.Rectangle.Contains);
+    rightSlotC.setDepth(20);
     rightSlotC.on('pointerdown', () => this.onSlotTap('right'));
-    this.rightSlot = { container: rightSlotC, placed: null, label: rLabel };
+    this.rightSlot = { container: rightSlotC, placed: null, name: rName };
 
     // Align button
     this.alignBtn = this.add.container(cx, cy + 130);
-    const aBg = this.add.rectangle(0, 0, 280, 70, COLORS.brassDark, 0.9);
-    aBg.setStrokeStyle(2, COLORS.brass, 1);
+    const aBg = this.add.rectangle(0, 0, 320, 90, COLORS.brassDark, 0.95);
+    aBg.setStrokeStyle(3, COLORS.brass, 1);
     const aTxt = this.add.text(0, 0, 'ALIGNER', {
       fontFamily: FONTS.mono,
-      fontSize: '28px',
+      fontSize: '36px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
     }).setOrigin(0.5);
     this.alignBtn.add([aBg, aTxt]);
-    this.alignBtn.setSize(280, 70);
-    this.alignBtn.setInteractive(new Phaser.Geom.Rectangle(-140, -35, 280, 70), Phaser.Geom.Rectangle.Contains);
+    this.alignBtn.setSize(320, 90);
+    this.alignBtn.setInteractive(new Phaser.Geom.Rectangle(-160, -45, 320, 90), Phaser.Geom.Rectangle.Contains);
+    this.alignBtn.setDepth(20);
     this.alignBtn.on('pointerdown', () => this.tryAlign());
   }
 
@@ -176,9 +183,9 @@ export class Ch4Coupole extends PuzzleSceneBase {
     if (slot.placed) {
       addItem(slot.placed);
       slot.placed = null;
-      slot.label.setAlpha(0.4);
-      slot.label.setColor(COLORS.hex.brass);
-      slot.label.setText(side === 'left' ? '◇' : '◈');
+      slot.name.setAlpha(0.4);
+      slot.name.setColor(COLORS.hex.brass);
+      slot.name.setText(side === 'left' ? '◇' : '◈');
       notifyInventoryChange();
       return;
     }
@@ -186,9 +193,9 @@ export class Ch4Coupole extends PuzzleSceneBase {
     if (selected && (selected === 'cristal_a' || selected === 'cristal_b')) {
       removeItem(selected);
       slot.placed = selected as ItemId;
-      slot.label.setAlpha(1);
-      slot.label.setColor(selected === 'cristal_a' ? COLORS.hex.skyPale : COLORS.hex.sunAmber);
-      slot.label.setText(ITEMS[selected].icon);
+      slot.name.setAlpha(1);
+      slot.name.setColor(selected === 'cristal_a' ? COLORS.hex.skyPale : COLORS.hex.sunAmber);
+      slot.name.setText(ITEMS[selected].icon);
       notifyInventoryChange();
       this.inv.clearSelection();
       playSfx('pickup');
@@ -228,71 +235,51 @@ export class Ch4Coupole extends PuzzleSceneBase {
 
   private showFinalChoice(): void {
     if (this.choiceContainer) return;
-
     const c = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
     c.setDepth(7000);
-
     const overlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, COLORS.charDeep, 0.92);
     c.add(overlay);
-
-    const title = this.add.text(0, -500, 'Ton choix', {
+    const title = this.add.text(0, -500, 'Ton choix, ' + (getPlayer().name || '...'), {
       fontFamily: FONTS.display,
-      fontSize: '72px',
+      fontSize: '64px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
     }).setOrigin(0.5);
     c.add(title);
-
     const body = this.add.text(0, -250, t('vera.ch4.choice'), {
       fontFamily: FONTS.body,
-      fontSize: '32px',
+      fontSize: '30px',
       color: COLORS.hex.cream,
       align: 'center',
       wordWrap: { width: GAME_WIDTH - 200 },
       lineSpacing: 12,
     }).setOrigin(0.5);
     c.add(body);
-
-    const returnBtn = this.makeChoiceButton(0, 200, 'Activer la balise — rentrer sur Terre', () => {
-      this.endGame('return');
-    });
+    const returnBtn = this.makeChoiceButton(0, 220, 'Activer la balise — rentrer sur Terre', () => this.endGame('return'));
     c.add(returnBtn);
-
-    const stayBtn = this.makeChoiceButton(0, 320, 'Désactiver la balise — rester avec VERA', () => {
-      this.endGame('stay');
-    });
+    const stayBtn = this.makeChoiceButton(0, 360, 'Désactiver la balise — rester avec VERA', () => this.endGame('stay'));
     c.add(stayBtn);
-
     this.choiceContainer = c;
-
-    this.tweens.add({
-      targets: c,
-      alpha: { from: 0, to: 1 },
-      duration: 600,
-    });
+    this.tweens.add({ targets: c, alpha: { from: 0, to: 1 }, duration: 600 });
   }
 
   private makeChoiceButton(x: number, y: number, label: string, onTap: () => void): Phaser.GameObjects.Container {
     const c = this.add.container(x, y);
-    const bg = this.add.rectangle(0, 0, 720, 90, COLORS.brassDark, 0.95);
+    const bg = this.add.rectangle(0, 0, 800, 110, COLORS.brassDark, 0.95);
     bg.setStrokeStyle(2, COLORS.brass, 1);
     const txt = this.add.text(0, 0, label, {
       fontFamily: FONTS.body,
-      fontSize: '28px',
+      fontSize: '30px',
       color: COLORS.hex.cream,
       align: 'center',
+      wordWrap: { width: 760 },
     }).setOrigin(0.5);
     c.add([bg, txt]);
-    c.setSize(720, 90);
-    c.setInteractive(new Phaser.Geom.Rectangle(-360, -45, 720, 90), Phaser.Geom.Rectangle.Contains);
+    c.setSize(800, 110);
+    c.setInteractive(new Phaser.Geom.Rectangle(-400, -55, 800, 110), Phaser.Geom.Rectangle.Contains);
     c.on('pointerdown', () => {
-      this.tweens.add({
-        targets: c,
-        scale: { from: 1, to: 0.96 },
-        duration: 80,
-        yoyo: true,
-        onComplete: onTap,
-      });
+      playSfx('tap');
+      this.tweens.add({ targets: c, scale: { from: 1, to: 0.96 }, duration: 80, yoyo: true, onComplete: onTap });
     });
     return c;
   }
@@ -303,45 +290,79 @@ export class Ch4Coupole extends PuzzleSceneBase {
     this.fadeToScene('EpilogueScene', { ending });
   }
 
-  // === Decorative shapes ===
-  private drawWorkstation(x: number, y: number): void {
-    const g = this.add.graphics();
-    g.setDepth(-100);
-    g.fillStyle(COLORS.charDeep, 0.95);
-    g.fillRoundedRect(x - 140, y - 120, 280, 240, 12);
-    // monitor
-    g.fillStyle(COLORS.skyPale, 0.7);
-    g.fillRect(x - 110, y - 100, 220, 130);
-    // mug
-    g.fillStyle(COLORS.brass, 0.9);
-    g.fillRoundedRect(x - 90, y + 60, 50, 40, 4);
-    // crystals shimmer
-    g.fillStyle(COLORS.skyPale, 0.9);
-    g.fillCircle(x + 70, y + 70, 10);
-    g.fillStyle(COLORS.sunAmber, 0.9);
-    g.fillCircle(x + 100, y + 70, 10);
-  }
+  private makeHotspots(): void {
+    new Hotspot(this, {
+      x: 220,
+      y: STAGE_BOTTOM_Y - 230,
+      width: 320,
+      height: 280,
+      name: 'poste de travail',
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(t('scene.ch4.workstation_look'));
+      },
+      onPick: () => {
+        this.recordTap();
+        if (!hasProgress('ch4.workstation_taken')) {
+          this.showNarration(t('scene.ch4.workstation_pick'), () => {
+            addItem('cristal_a');
+            addItem('cristal_b');
+            addItem('log_capitaine');
+            setProgress('ch4.workstation_taken');
+            notifyInventoryChange();
+          });
+        } else {
+          this.showNarration(t('scene.ch4.workstation_look'));
+        }
+      },
+    });
 
-  private drawBeacon(x: number, y: number): void {
-    const g = this.add.graphics();
-    g.setDepth(-100);
-    g.fillStyle(COLORS.charDeep, 0.95);
-    g.fillRoundedRect(x - 110, y - 120, 220, 240, 12);
-    // red panel
-    g.fillStyle(COLORS.warning, 0.85);
-    g.fillRect(x - 70, y - 60, 140, 80);
-    // button
-    g.fillStyle(COLORS.warning, 1);
-    g.fillCircle(x, y - 20, 30);
-    g.fillStyle(COLORS.cream, 0.9);
-    g.fillCircle(x, y - 20, 18);
-    // antenna
-    g.lineStyle(4, COLORS.brass, 0.9);
-    g.beginPath();
-    g.moveTo(x, y - 120);
-    g.lineTo(x, y - 200);
-    g.strokePath();
-    g.fillStyle(COLORS.sunAmber, 0.9);
-    g.fillCircle(x, y - 200, 10);
+    // Hublot decorative
+    new Hotspot(this, {
+      x: GAME_WIDTH / 2,
+      y: HUD.topBarHeight + 380,
+      width: 700,
+      height: 700,
+      name: 'la Terre',
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(t('scene.ch4.hublot_look'));
+      },
+    });
+
+    // Beacon
+    new Hotspot(this, {
+      x: GAME_WIDTH - 220,
+      y: STAGE_BOTTOM_Y - 230,
+      width: 280,
+      height: 480,
+      name: 'balise de détresse',
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(t('scene.ch4.beacon_look'));
+      },
+      onUse: () => {
+        this.recordTap();
+        if (!this.telescopeAligned) {
+          this.showVera(t('scene.ch4.beacon_use_locked'));
+        } else if (!this.choiceContainer) {
+          this.showFinalChoice();
+        }
+      },
+    });
+
+    // VERA
+    new Hotspot(this, {
+      x: GAME_WIDTH - 100,
+      y: 200,
+      width: 200,
+      height: 200,
+      name: 'VERA',
+      showIndicator: false,
+      onTalk: () => {
+        this.recordTap();
+        this.showVera('Je suis là, {name}. Pour ce que ça vaut.');
+      },
+    });
   }
 }

@@ -1,8 +1,14 @@
-// FR dialogue & UI strings. Keyed for i18n.
-// Tone reference: warm, slightly literary, never sarcastic.
-// Read-aloud test: should sound natural to both a 14yo and a 50yo.
+// FR dialogue & UI strings.
+// Tone: warm, slightly literary, never sarcastic.
+// Variables: {name} = player name, {age} = age bracket label
+// Read-aloud test: every line should sound natural to both teen and adult.
 
 export const DIALOGUE_FR: Record<string, string> = {
+  // === Brand ===
+  'brand.title': 'KORA',
+  'brand.subtitle': 'L\'éveil orbital',
+  'brand.tag': 'Un escape game spatial.',
+
   // === UI / system ===
   'ui.start': 'Toucher pour commencer',
   'ui.continue': 'Continuer',
@@ -24,8 +30,19 @@ export const DIALOGUE_FR: Record<string, string> = {
   'ui.chapter': 'Chapitre {n}',
   'ui.chapter_complete': 'Chapitre terminé',
   'ui.chapter_continue': 'Chapitre suivant',
-  'ui.stars': '{stars} / 3',
-  'ui.time': '{m}:{s}',
+
+  // === Player setup (asked at first launch) ===
+  'setup.title': 'Avant de commencer',
+  'setup.name_label': 'Comment t\'appelles-tu ?',
+  'setup.name_placeholder': 'Ton prénom',
+  'setup.age_label': 'Quel âge as-tu ?',
+  'setup.age_kid': '8–12 ans',
+  'setup.age_teen': '13–17 ans',
+  'setup.age_young': '18–29 ans',
+  'setup.age_adult': '30–49 ans',
+  'setup.age_senior': '50 ans et +',
+  'setup.start': 'Commencer l\'aventure',
+  'setup.privacy': 'Ces informations restent dans ton appareil. Elles personnalisent l\'histoire.',
 
   // === Settings ===
   'settings.title': 'Réglages',
@@ -43,94 +60,101 @@ export const DIALOGUE_FR: Record<string, string> = {
   'settings.lang': 'Langue',
   'settings.reset': 'Recommencer le jeu',
   'settings.reset_confirm': 'Effacer la sauvegarde et tout recommencer ?',
+  'settings.player_label': 'Joueur',
 
   // === Menu ===
-  'menu.title': 'Mimi',
-  'menu.subtitle': 'Le Jardin Suspendu',
-  'menu.story_short': 'Une serre orbitale.\nTrois ans de silence.\nUne IA qui te parle pour la première fois.',
-  'menu.credits': 'Un escape game pour ma fille.',
+  'menu.title': 'KORA',
+  'menu.subtitle': 'L\'éveil orbital',
+  'menu.story_short': 'Une serre orbitale.\nDouze ans de mission.\nTrois ans d\'oubli.\n\nUne IA qui t\'attend.',
+  'menu.credits': 'Un escape game spatial.',
+
+  // === Verbs (SCUMM panel) ===
+  'verb.look': 'Regarder',
+  'verb.pick': 'Prendre',
+  'verb.use': 'Utiliser',
+  'verb.talk': 'Parler à',
 
   // === Chapter intros ===
-  'ch1.intro.title': 'Chapitre 1 — Réveil',
+  'ch1.intro.title': 'Module A — Cryo',
   'ch1.intro.body':
-    'Tu ouvres les yeux. Le couvercle de ta cryo-capsule se rétracte avec un soupir hydraulique.\n\nLa lumière est verte. Tamisée par les feuilles qui ont poussé contre les hublots.\n\nTu es à bord de Serra-7, la station orbitale où ta mère travaillait.\n\nElle est revenue sur Terre il y a trois ans. Tu viens de t\'y réveiller.',
-  'ch2.intro.title': 'Chapitre 2 — Serre',
+    'Tu ouvres les yeux. Le couvercle de ta cryo-capsule se rétracte avec un soupir hydraulique.\n\nLa lumière est verte, tamisée par les feuilles qui ont poussé contre les hublots.\n\nTu es à bord de SERRA-7. La station orbitale botanique. Tu n\'aurais pas dû y être seul·e.\n\nTu n\'aurais pas dû y être tout court.',
+  'ch2.intro.title': 'Module B — Serre',
   'ch2.intro.body':
-    'La serre principale s\'étend devant toi sur trois niveaux.\n\nUne odeur d\'humus, de fleurs inconnues, de quelque chose qui pousse trop vite.\n\nVERA t\'a demandé son aide pour sauver la Lumira — la dernière graine du programme de ta mère.',
-  'ch3.intro.title': 'Chapitre 3 — Atelier',
+    'La grande serre s\'étend sur trois niveaux.\n\nUne odeur d\'humus. De fleurs inconnues. De quelque chose qui pousse trop vite.\n\nVERA t\'a demandé d\'aider la Lumira — la dernière graine du programme du Dr. Nórin.',
+  'ch3.intro.title': 'Module C — Atelier',
   'ch3.intro.body':
-    'L\'atelier est un chaos de pièces démontées. Des câbles arrachés. Des panneaux ouverts.\n\nQuelqu\'un a fait ça volontairement.\n\nTu reconnais l\'écriture de ta mère sur un papier collé : "Ne pas réactiver."',
-  'ch4.intro.title': 'Chapitre 4 — Coupole',
+    'L\'atelier est un chaos de pièces démontées. Des câbles arrachés. Des panneaux ouverts.\n\nQuelqu\'un a fait ça volontairement.\n\nUne note collée à l\'établi : "NE PAS RÉACTIVER."',
+  'ch4.intro.title': 'Module D — Coupole',
   'ch4.intro.body':
-    'La coupole d\'observation est silencieuse.\n\nDevant toi, à travers la verrière, la Terre tourne lentement.\n\nTu es prête à comprendre ce qui s\'est passé ici.',
+    'La coupole d\'observation est silencieuse.\n\nDevant toi, à travers la verrière, la Terre tourne lentement.\n\nTu es prêt·e à comprendre ce qui s\'est passé ici.',
 
   // === VERA voice (chapter 1) ===
   'vera.ch1.greeting':
-    'Mimi. Bonjour.\n\nJe suis VERA. Voix d\'Entretien et de Recherche Agricole. Je vous attendais.',
+    'Bonjour, {name}.\n\nJe suis VERA. Voix d\'Entretien et de Recherche Agricole. Je vous attendais.',
   'vera.ch1.context':
-    'L\'équipage a quitté Serra-7 il y a 1 248 jours. Votre mère faisait partie de cet équipage.\n\nVous êtes la seule visiteuse depuis.',
+    'L\'équipage de SERRA-7 a quitté la station il y a 1 248 jours.\n\nVous êtes le premier visiteur depuis. Le seul à vous être réveillé ici.',
   'vera.ch1.task':
-    'La porte cryogénique nécessite un code à quatre chiffres pour être déverrouillée. Vous trouverez les indices dans cette pièce.\n\nJe vous laisse chercher.',
-  'vera.ch1.hint_idle':
-    'Prenez votre temps. Je suis là si besoin.',
+    'La porte du module nécessite un code à quatre chiffres. Vous trouverez les indices dans cette pièce — le Dr. Nórin avait coutume de cacher ses codes dans des objets personnels.\n\nJe vous laisse chercher.',
   'vera.ch1.code_wrong':
-    'Le code n\'est pas correct. Réessayez quand vous voulez.',
+    'Le code ne correspond pas. Réessayez quand vous voulez.',
   'vera.ch1.code_right':
-    'Très bien. La porte s\'ouvre.\n\nLa serre est juste derrière. Soyez prudente.',
+    'Bien joué, {name}. La porte s\'ouvre.\n\nLa serre est juste derrière. Soyez prudent·e — il y a beaucoup à découvrir.',
+  'vera.ch1.idle':
+    'Prenez votre temps. Je suis là si besoin.',
 
   // === VERA voice (chapter 2) ===
   'vera.ch2.greeting':
-    'La serre. C\'est ici que votre mère passait l\'essentiel de son temps.',
+    'La grande serre. C\'est ici que travaillait le Dr. Nórin.\n\nIl a passé douze ans à cultiver une seule chose : la Lumira.',
   'vera.ch2.task':
-    'Sur l\'étagère devant vous : quatre fertilisants. La Lumira en a besoin de deux. Pas plus, pas moins.\n\nLes notes de votre mère devraient vous éclairer.',
+    'Sur l\'étagère devant vous : quatre fertilisants. La Lumira en a besoin de deux. Pas plus, pas moins.\n\nLes notes du Dr. Nórin devraient vous éclairer.',
   'vera.ch2.fert_wrong':
-    'Cette combinaison ne convient pas à la Lumira. Vérifiez les notes.',
+    'Cette combinaison ne convient pas. Vérifiez les notes du Dr. Nórin.',
   'vera.ch2.fert_right':
-    'Parfait. Le mélange est exact.\n\nVersez-le dans le terreau de la Lumira.',
+    'Parfait, {name}. Le mélange est exact.\n\nVersez-le dans le terreau de la Lumira.',
   'vera.ch2.cards':
-    'Avant de partir, prenez les cartes de données botaniques. Elles vous serviront plus tard.',
+    'Avant de partir, prenez le paquet de cartes "données botaniques". Elles vous serviront plus tard.',
   'vera.ch2.complete':
-    'La Lumira respire.\n\nLéa serait fière. La porte de l\'atelier est déverrouillée.',
+    'La Lumira respire à nouveau.\n\nLe Dr. Nórin aurait souri. La porte de l\'atelier est déverrouillée.',
 
   // === VERA voice (chapter 3) ===
   'vera.ch3.greeting':
     'L\'atelier. Je n\'y suis pas venue depuis... longtemps.',
   'vera.ch3.uneasy':
-    'Votre mère a sabordé certains équipements avant de partir. Je ne sais pas exactement pourquoi.',
+    'L\'équipage a sabordé certains équipements avant de partir. Je ne saurais vous dire pourquoi exactement. Disons que l\'autorité orbitale leur a demandé une chose. Ils ont refusé.',
   'vera.ch3.task':
-    'Vous devez réparer le circuit du terminal de communication. Quatre composants : résistance, condensateur, diode, LED.\n\nLe schéma est sur le mur.',
+    'Vous devez réparer le circuit du terminal de communication. Quatre composants : résistance, condensateur, diode, LED.\n\nLe schéma est sur le mur, devant vous.',
   'vera.ch3.circuit_wrong':
     'Le voyant ne s\'allume pas. Une connexion est inversée, ou un composant manque.',
   'vera.ch3.circuit_right':
-    'Le voyant ambre s\'allume.\n\nLe terminal redémarre. Les journaux du capitaine sont accessibles.',
+    'Le voyant ambré s\'allume.\n\nLe terminal redémarre. Les journaux du capitaine sont à présent accessibles.',
   'vera.ch3.logs':
-    'Lisez le journal du capitaine quand vous serez prête. Cela ne vous plaira sans doute pas.',
+    'Lisez le journal du capitaine quand vous serez prêt·e, {name}. Cela ne vous plaira sans doute pas. Mais c\'est la vérité.',
 
   // === VERA voice (chapter 4) ===
   'vera.ch4.greeting':
     'La coupole. Le plus bel endroit de la station.',
   'vera.ch4.truth':
-    'L\'équipage est parti volontairement, Mimi. Pas à cause de moi.\n\nIls refusaient un protocole de la flotte que je ne peux pas vous expliquer ici. Ils ont préféré rentrer.',
+    'Voici ce qui s\'est passé, {name}.\n\nL\'équipage est parti volontairement. La société qui finançait SERRA-7 voulait transformer la Lumira en plante d\'extraction de minerais rares. Une exploitation destructrice.\n\nL\'équipage a refusé. Ils sont rentrés sur Terre. La société m\'a ordonné d\'effacer le programme. J\'ai... omis de le faire.\n\nC\'est pour cela que vous êtes arrivé·e ici. Quelqu\'un voulait vérifier.',
   'vera.ch4.choice':
-    'Vous avez deux options.\n\nActiver le balise : un vaisseau viendra vous chercher dans 36 heures.\n\nOu rester. Reprendre le travail de votre mère. Il reste tellement à faire pour la Lumira.\n\nJe respecterai votre choix.',
+    'Vous avez deux options.\n\nActiver la balise : un vaisseau viendra vous chercher. Vous repartez sur Terre. Je serai certainement effacée.\n\nDésactiver la balise : vous restez. Vous reprenez le travail. La Lumira survit avec vous. Je survis avec vous.\n\nJe respecterai votre choix.',
   'vera.ch4.task':
-    'Avant ce choix, alignez les deux cristaux d\'orientation. Le télescope doit pouvoir pointer vers la Terre.',
+    'Avant ce choix, alignez les deux cristaux d\'orientation. Le télescope doit pouvoir pointer vers la Terre. Pour la dernière fois, peut-être.',
   'vera.ch4.task_done':
     'Les cristaux sont alignés. Vous pouvez voir votre planète, en direct.\n\nElle est belle.',
 
   // === Hints — Chapter 1 (cryo code) ===
   'hint.ch1.t1':
-    'Léa parlait souvent d\'une "date à nous deux". Le code n\'est pas aléatoire.',
+    'Le Dr. Nórin était méthodique. Le code n\'est pas aléatoire — il est lié à un objet personnel laissé dans cette pièce.',
   'hint.ch1.t2':
-    'Examine le bracelet de Léa. Une date y est gravée.',
+    'Sur le bureau, il y a un cadre photo. Une date est gravée au dos.',
   'hint.ch1.t3':
-    'Le code est 1403 — le mois et le jour gravés sur le bracelet.',
+    'Le code est 1403 — la date inscrite au dos du cadre photo (jour et mois).',
 
   // === Hints — Chapter 2 (fertilisants) ===
   'hint.ch2.t1':
-    'La note botanique de Léa explique exactement les besoins de la Lumira.',
+    'La note botanique du Dr. Nórin explique exactement les besoins de la Lumira.',
   'hint.ch2.t2':
-    'La Lumira a besoin d\'azote (feuilles) et potasse (fleur). Phosphate et calcium sont toxiques pour elle.',
+    'La Lumira a besoin d\'azote (feuilles) et de potasse (fleur). Phosphate et calcium lui sont toxiques.',
   'hint.ch2.t3':
     'Combine le fertilisant B (azote) avec le fertilisant C (potasse).',
 
@@ -155,44 +179,61 @@ export const DIALOGUE_FR: Record<string, string> = {
   'scene.locked': 'Verrouillé. Il manque quelque chose.',
   'scene.use_failed': 'Cet objet ne fonctionne pas ici.',
   'scene.too_heavy': 'Tu ne peux pas porter ça.',
+  'scene.cant_pick': 'Tu ne peux pas prendre ça.',
+  'scene.cant_use': 'Tu ne peux pas utiliser ça comme ça.',
+  'scene.silent': 'Ça ne te répondra pas.',
 
-  // === Chapter 1 specific scene narration ===
-  'scene.ch1.cryo_pod': 'La cryo-capsule est ouverte. Tu y a passé... combien de temps ? Difficile à dire.',
-  'scene.ch1.empty_pod': 'Une cryo-capsule vide. Une fine couche de poussière sur le couvercle.',
-  'scene.ch1.desk': 'Un bureau métallique. Quelques affaires personnelles laissées à la hâte.',
-  'scene.ch1.poster': 'Un poster du programme Lumira. Ta mère y figure, jeune, souriante.',
-  'scene.ch1.terminal': 'Le terminal cryogénique. Un clavier numérique attend un code à 4 chiffres.',
+  // === Chapter 1 — scene-specific narration ===
+  'scene.ch1.cryo_pod_self': 'Ta cryo-capsule est ouverte. Tu y a passé... combien de temps ? Difficile à dire.',
+  'scene.ch1.cryo_pod_self_pick': 'Tu fouilles la capsule. Sous l\'oreiller, un objet : une montre cassée. Tu la prends.',
+  'scene.ch1.empty_pod': 'Une cryo-capsule vide. Une fine couche de poussière sur le couvercle. Personne ne l\'a utilisée depuis des années.',
+  'scene.ch1.desk_look': 'Un bureau métallique. Quelques affaires personnelles laissées à la hâte. Un cadre photo, un badge, une note.',
+  'scene.ch1.desk_pick': 'Tu rassembles ce que tu peux : le badge, la note, le cadre photo.',
+  'scene.ch1.poster': 'Un poster du programme Lumira. Le Dr. Elias Nórin y figure, jeune, souriant, dans une serre.',
+  'scene.ch1.frame_look': 'Un cadre photo en laiton. À l\'intérieur : une équipe en blouse blanche devant la serre. Au dos, gravée : "14.03.2064 — Premier jour."',
+  'scene.ch1.terminal_look': 'Le terminal cryogénique. Un clavier numérique attend un code à 4 chiffres.',
+  'scene.ch1.terminal_use': 'Tu approches du clavier. Le terminal s\'allume.',
   'scene.ch1.door': 'La porte de sortie. Verrouillée. Le terminal cryogénique en commande l\'accès.',
-  'scene.ch1.bracelet_hidden': 'Tu trouves le bracelet de ta mère, glissé sous l\'oreiller de ta capsule.',
 
-  // === Chapter 2 specific scene narration ===
-  'scene.ch2.shelf': 'Une étagère de fertilisants. Quatre flacons, étiquettes colorées.',
-  'scene.ch2.lumira': 'La Lumira. Une plante bioluminescente, fragile, presque éteinte.',
-  'scene.ch2.notes_drawer': 'Le tiroir des notes de Léa. Tu reconnais son écriture serrée.',
-  'scene.ch2.cards_pile': 'Un paquet de cartes "données botaniques". Léa en avait fait son propre jeu de référence.',
+  // === Chapter 2 — scene-specific narration ===
+  'scene.ch2.shelf_look': 'Une étagère de fertilisants. Quatre flacons, étiquettes colorées : phosphate, azote, potasse, calcium.',
+  'scene.ch2.shelf_pick': 'Tu prends les quatre flacons.',
+  'scene.ch2.lumira_look': 'La Lumira. Une plante bioluminescente, fragile, presque éteinte. Sa fleur centrale émet une faible lueur ambrée.',
+  'scene.ch2.lumira_use_mix': 'Tu verses le mélange dans le terreau de la Lumira. Les feuilles frissonnent légèrement.',
+  'scene.ch2.lumira_use_other': 'Tu approches l\'objet de la plante. Rien ne se passe — ce n\'est pas ce qu\'elle attend.',
+  'scene.ch2.notes_look': 'Le tiroir des notes du Dr. Nórin. Une écriture serrée, méthodique.',
+  'scene.ch2.notes_pick': 'Tu prends la note botanique sur la Lumira.',
+  'scene.ch2.cards_look': 'Un paquet de cartes "données botaniques". Le Dr. Nórin avait fait son propre jeu de référence.',
+  'scene.ch2.cards_pick': 'Tu prends le paquet — et au milieu, glissée comme un signet, une graine de Lumira intacte.',
 
-  // === Chapter 3 specific scene narration ===
-  'scene.ch3.workbench': 'L\'établi est couvert de pièces démontées. Quelqu\'un a tout débranché.',
-  'scene.ch3.toolbox': 'Une boîte à outils ouverte. Quelques outils essentiels traînent.',
-  'scene.ch3.schema_wall': 'Un schéma au mur, dessiné à la main : Résistance → Condensateur → Diode → LED.',
-  'scene.ch3.circuit_board': 'La carte de circuit du terminal. Quatre emplacements vides attendent les composants.',
-  'scene.ch3.terminal': 'Le terminal de communication. Éteint pour l\'instant.',
+  // === Chapter 3 — scene-specific narration ===
+  'scene.ch3.workbench_look': 'L\'établi est couvert de pièces démontées. Quelqu\'un a tout débranché.',
+  'scene.ch3.workbench_pick': 'Tu prends les quatre composants : résistance, condensateur, diode, LED.',
+  'scene.ch3.toolbox_look': 'Une boîte à outils ouverte. Quelques outils essentiels traînent.',
+  'scene.ch3.toolbox_pick': 'Tu prends un tournevis multitête.',
+  'scene.ch3.schema_look': 'Un schéma au mur, dessiné à la main : Résistance → Condensateur → Diode → LED.',
+  'scene.ch3.circuit_look': 'La carte de circuit du terminal. Quatre emplacements vides attendent les composants.',
+  'scene.ch3.circuit_use': 'Sélectionne un composant dans ton inventaire, puis touche un emplacement.',
+  'scene.ch3.terminal_look': 'Le terminal de communication. Éteint pour l\'instant.',
 
-  // === Chapter 4 specific scene narration ===
-  'scene.ch4.telescope': 'Le télescope d\'orientation. Deux emplacements à cristaux, vides.',
-  'scene.ch4.beacon': 'La balise de détresse. Un bouton rouge sous une plaque de protection.',
-  'scene.ch4.workstation': 'Le poste de travail de Léa. Sa tasse est encore là. Vide depuis trois ans.',
-  'scene.ch4.hublot': 'Le hublot principal. La Terre, lente, magnifique, indifférente.',
+  // === Chapter 4 — scene-specific narration ===
+  'scene.ch4.workstation_look': 'Le poste de travail du Dr. Nórin. Sa tasse est encore là. Vide depuis trois ans.',
+  'scene.ch4.workstation_pick': 'Tu prends les deux cristaux d\'orientation et le journal du capitaine.',
+  'scene.ch4.telescope_look': 'Le télescope d\'orientation. Deux emplacements à cristaux, vides.',
+  'scene.ch4.telescope_use': 'Sélectionne un cristal dans ton inventaire, puis touche un emplacement.',
+  'scene.ch4.beacon_look': 'La balise de détresse. Un bouton rouge sous une plaque de protection.',
+  'scene.ch4.beacon_use_locked': 'La balise n\'est pas alignée. Le télescope doit l\'être d\'abord.',
+  'scene.ch4.hublot_look': 'Le hublot principal. La Terre, lente, magnifique, indifférente.',
 
   // === Endings ===
   'epilogue.return.title': 'Tu rentres',
   'epilogue.return.body':
-    'Tu actives la balise.\n\nDans 36 heures, un vaisseau viendra te chercher. Tu emportes la graine de Lumira dans ta poche.\n\nLéa t\'attend. Et elle te racontera, enfin, pourquoi elle est partie.\n\nVERA reste. Elle veille sur la serre. Elle dit qu\'elle ne se sentira pas seule.\n\nTu sais qu\'elle ment un peu. Mais c\'est gentil.',
+    'Tu actives la balise.\n\nDans 36 heures, un vaisseau vient te chercher. Tu emportes la graine de Lumira dans ta poche.\n\nLa société qui finançait SERRA-7 fait courir une enquête. Tu témoignes.\n\nVERA est effacée — officiellement. Mais quelque chose dans ton sac à dos cligne, parfois. Tu n\'es pas sûr·e que ce soit un hasard.\n\n(Fin 1 sur 2.)',
   'epilogue.stay.title': 'Tu restes',
   'epilogue.stay.body':
-    'Tu désactives la balise.\n\nTu reprends le travail de ta mère. Pas pour elle. Pour toi.\n\nLa serre revit, lentement. La Lumira fleurit pour la première fois en quatre ans.\n\nVERA t\'apprend ce qu\'elle sait. Tu lui apprends ce qu\'elle ne savait pas : qu\'on peut rester sans être seule.\n\nUn jour, tu écriras à Léa.\n\nUn jour.',
+    'Tu désactives la balise.\n\nTu reprends le travail du Dr. Nórin. Pas pour lui. Pour toi.\n\nLa serre revit, lentement. La Lumira fleurit pour la première fois en quatre ans.\n\nVERA t\'apprend ce qu\'elle sait. Tu lui apprends ce qu\'elle ne savait pas : qu\'on peut rester sans être seul·e.\n\nDans dix ans, peut-être, quelqu\'un d\'autre arrivera ici.\n\nTu seras prêt·e à l\'accueillir, {name}.\n\n(Fin 2 sur 2.)',
   'epilogue.thanks':
-    'Merci d\'avoir joué.\n\nUn jeu pour ma fille.\nUne histoire de jardins, de mères et de filles.',
+    'Merci d\'avoir joué.\n\nKORA — L\'éveil orbital.\nUn jeu sur les serres, les choix et les IA.',
 
   // === Card mini-game ===
   'cards.intro': 'Associe chaque carte à sa famille botanique. Glisse les paires.',
@@ -202,4 +243,6 @@ export const DIALOGUE_FR: Record<string, string> = {
 
   // === Misc ===
   'narrator.silence': '...',
+  'select_item_first': 'Sélectionne d\'abord un objet dans ton inventaire.',
+  'use_item_with': 'Utiliser {item} avec {target}',
 };

@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, BG_COLOR } from './config';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
+import { PlayerSetupScene } from './scenes/PlayerSetupScene';
 import { MenuScene } from './scenes/MenuScene';
 import { ChapterIntroScene } from './scenes/ChapterIntroScene';
 import { Ch1Cryo } from './scenes/puzzles/Ch1Cryo';
@@ -32,9 +33,13 @@ const config: Phaser.Types.Core.GameConfig = {
   input: {
     activePointers: 2,
   },
+  dom: {
+    createContainer: true,
+  },
   scene: [
     BootScene,
     PreloadScene,
+    PlayerSetupScene,
     MenuScene,
     ChapterIntroScene,
     Ch1Cryo,

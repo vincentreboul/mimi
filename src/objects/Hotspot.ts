@@ -10,7 +10,10 @@ export interface HotspotConfig {
   width?: number;
   height?: number;
   name: string;                    // Required — shown in action label
+  label?: string;                  // Legacy alias, ignored
   shape?: 'rect' | 'circle';
+  glow?: boolean;                  // Legacy, ignored
+  onTap?: () => void;              // Legacy single-action handler (used if no verb handlers)
   showIndicator?: boolean;         // Show subtle "tap me" dot
   // Per-verb handlers — return true if handled, false to fall through to default
   onLook?: () => void;
@@ -124,6 +127,11 @@ export class Hotspot extends Phaser.GameObjects.Container {
 
   private handleVerb(verb: Verb): void {
     const c = this.config;
+    // Legacy fallback to onTap when no verb-specific handlers
+    if (!c.onLook && !c.onPick && !c.onUse && !c.onTalk && c.onTap) {
+      c.onTap();
+      return;
+    }
     switch (verb) {
       case 'look':
         if (c.onLook) c.onLook();
@@ -142,6 +150,14 @@ export class Hotspot extends Phaser.GameObjects.Container {
         else this.fallback('Ça ne te répondra pas.');
         break;
     }
+  }
+
+  /** Legacy compatibility: used to be the glow API */
+  startGlow(): void {
+    this.showHighlight(0.4);
+  }
+  stopGlow(): void {
+    this.fadeHighlight();
   }
 
   private fallback(msg: string): void {

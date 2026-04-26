@@ -108,6 +108,15 @@ export class InventoryBar extends Phaser.GameObjects.Container {
     this.refresh();
   }
 
+  /** Legacy compatibility */
+  getSelected(): ItemId | null {
+    return getSelectedItem();
+  }
+  clearSelection(): void {
+    setSelectedItem(null);
+    this.refresh();
+  }
+
   refresh(): void {
     const inv = getInventory();
     const selected = getSelectedItem();

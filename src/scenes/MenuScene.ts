@@ -22,14 +22,14 @@ export class MenuScene extends Phaser.Scene {
     this.drawBackground();
 
     // Title
-    this.add.text(width / 2, 360, 'Mimi', {
+    this.add.text(width / 2, 360, 'KORA', {
       fontFamily: FONTS.display,
-      fontSize: '180px',
+      fontSize: '220px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 510, 'Le Jardin Suspendu', {
+    this.add.text(width / 2, 540, 'L\'éveil orbital', {
       fontFamily: FONTS.display,
       fontSize: '52px',
       color: COLORS.hex.brass,

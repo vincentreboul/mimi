@@ -1,17 +1,15 @@
 import * as Phaser from 'phaser';
-import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../../config';
+import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT, HUD, STAGE_BOTTOM_Y } from '../../config';
 import { PuzzleSceneBase } from './PuzzleSceneBase';
-import { SceneBackground } from '../../objects/SceneBackground';
+import { PixelScene } from '../../objects/PixelScene';
 import { Hotspot } from '../../objects/Hotspot';
-import { addItem, hasItem, removeItem, notifyInventoryChange, getInventory } from '../../systems/inventory';
+import { addItem, hasItem, removeItem, notifyInventoryChange } from '../../systems/inventory';
 import { setProgress, hasProgress } from '../../systems/save';
-import { PUZZLE_IDS, SOLUTIONS } from '../../data/puzzles';
+import { PUZZLE_IDS } from '../../data/puzzles';
 import { t } from '../../systems/narrative';
 import type { ItemId } from '../../data/items';
 
 export class Ch2Serre extends PuzzleSceneBase {
-  private lumiraHotspot?: Hotspot;
-
   constructor() {
     super('Ch2Serre');
   }
@@ -23,90 +21,161 @@ export class Ch2Serre extends PuzzleSceneBase {
 
   create(): void {
     this.cameras.main.fadeIn(500, 31, 77, 62);
-    SceneBackground.draw(this, 'serre');
-
-    this.add.text(GAME_WIDTH / 2, 200, 'SERRE — Module B', {
-      fontFamily: FONTS.mono,
-      fontSize: '36px',
-      color: COLORS.hex.cream,
-    }).setOrigin(0.5);
-
+    this.composeBackground();
     this.setupHud(PUZZLE_IDS.ch2Fert);
+    this.makeHotspots();
 
-    // Lumira plant (target for fertilizer)
-    this.drawLumira(GAME_WIDTH / 2, GAME_HEIGHT - 800);
-    this.lumiraHotspot = new Hotspot(this, {
+    if (!hasProgress('ch2.vera_greeted')) {
+      this.time.delayedCall(700, () => {
+        this.showVeraSequence(
+          [t('vera.ch2.greeting'), t('vera.ch2.task')],
+          () => setProgress('ch2.vera_greeted')
+        );
+      });
+    }
+  }
+
+  private composeBackground(): void {
+    PixelScene.stageBackground(this, 0x2d5a3a);
+
+    const g = this.add.graphics();
+    g.setDepth(-900);
+    g.fillStyle(0xf4e9d8, 0.05);
+    for (let i = 0; i < 5; i++) {
+      g.fillTriangle(i * 270, 0, i * 270 + 200, 0, i * 270 + 100, GAME_HEIGHT);
+    }
+
+    PixelScene.tileH(this, 'floor2', STAGE_BOTTOM_Y - 30, 6);
+    PixelScene.tileH(this, 'wall4Light', HUD.topBarHeight + 555, 5, 0, GAME_WIDTH, { origin: { x: 0, y: 1 } });
+    PixelScene.place(this, 'wallWindow', GAME_WIDTH / 2, HUD.topBarHeight + 660, 6, { origin: { x: 0.5, y: 1 } });
+
+    const ceilY = HUD.topBarHeight + 50;
+    const plantKeys = ['green00', 'green05', 'green09', 'green18'];
+    plantKeys.forEach((k, i) => {
+      const x = 200 + i * 220;
+      PixelScene.place(this, k, x, ceilY + 220, 1.6, { origin: { x: 0.5, y: 1 }, depth: 4 });
+    });
+
+    PixelScene.place(this, 'bush1', 150, STAGE_BOTTOM_Y - 60, 1.4, { origin: { x: 0.5, y: 1 }, depth: 6 });
+    PixelScene.place(this, 'bush2', GAME_WIDTH - 150, STAGE_BOTTOM_Y - 60, 1.4, { origin: { x: 0.5, y: 1 }, depth: 6 });
+
+    // Lumira (puzzle target)
+    PixelScene.place(this, 'orange1', GAME_WIDTH / 2, STAGE_BOTTOM_Y - 60, 2.2, { origin: { x: 0.5, y: 1 }, depth: 8 });
+    const glow = this.add.graphics();
+    glow.setDepth(7);
+    glow.fillStyle(0xf4a261, 0.18);
+    glow.fillEllipse(GAME_WIDTH / 2, STAGE_BOTTOM_Y - 200, 380, 500);
+
+    // Fertilizer shelf
+    PixelScene.place(this, 'locker', 220, STAGE_BOTTOM_Y - 70, 6, { depth: 7 });
+    const barrels = ['baril1', 'baril2', 'baril3', 'greenBarrel'];
+    barrels.forEach((b, i) => {
+      const x = 90 + i * 75;
+      PixelScene.place(this, b, x, STAGE_BOTTOM_Y - 380, 2.5, { depth: 8 });
+    });
+
+    // Notes / cards
+    PixelScene.place(this, 'lockerOpen', GAME_WIDTH - 220, STAGE_BOTTOM_Y - 70, 6, { depth: 7 });
+    PixelScene.place(this, 'books', GAME_WIDTH - 280, STAGE_BOTTOM_Y - 380, 4, { depth: 8 });
+    PixelScene.place(this, 'books2', GAME_WIDTH - 180, STAGE_BOTTOM_Y - 380, 4, { depth: 8 });
+
+    PixelScene.place(this, 'lamp1', GAME_WIDTH / 2, HUD.topBarHeight + 90, 6, { origin: { x: 0.5, y: 0 }, depth: 4 });
+
+    this.add.text(GAME_WIDTH / 2, HUD.topBarHeight + 30, 'MODULE B — SERRE', {
+      fontFamily: FONTS.mono,
+      fontSize: '32px',
+      color: COLORS.hex.cream,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(50);
+  }
+
+  private makeHotspots(): void {
+    new Hotspot(this, {
       x: GAME_WIDTH / 2,
-      y: GAME_HEIGHT - 800,
-      width: 280,
+      y: STAGE_BOTTOM_Y - 220,
+      width: 320,
       height: 380,
-      label: 'Lumira',
-      onTap: () => {
+      name: 'la Lumira',
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(t('scene.ch2.lumira_look'));
+      },
+      onUse: () => {
         this.recordTap();
         if (hasItem('fert_mix')) {
           this.applyMix();
         } else {
-          this.showNarration(t('scene.ch2.lumira'));
+          this.showNarration(t('scene.ch2.lumira_use_other'));
         }
+      },
+      onPick: () => {
+        this.recordTap();
+        this.showNarration('La Lumira est trop précieuse pour la déplacer.');
       },
     });
 
-    // Fertilizer shelf
-    this.drawShelf(GAME_WIDTH / 2, 720);
     new Hotspot(this, {
-      x: GAME_WIDTH / 2,
-      y: 720,
-      width: 700,
-      height: 220,
-      label: 'Étagère fertilisants',
-      onTap: () => {
+      x: 220,
+      y: STAGE_BOTTOM_Y - 380,
+      width: 320,
+      height: 280,
+      name: 'étagère de fertilisants',
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(t('scene.ch2.shelf_look'));
+      },
+      onPick: () => {
         this.recordTap();
         if (!hasProgress('ch2.fert_taken')) {
-          this.showNarration(t('scene.ch2.shelf'), () => {
+          this.showNarration(t('scene.ch2.shelf_pick'), () => {
             ['fert_a', 'fert_b', 'fert_c', 'fert_d'].forEach((f) => addItem(f as ItemId));
             setProgress('ch2.fert_taken');
             notifyInventoryChange();
           });
         } else {
-          this.showNarration(t('scene.ch2.shelf'));
+          this.showNarration(t('scene.ch2.shelf_look'));
         }
       },
     });
 
-    // Notes drawer (left)
-    this.drawDrawer(180, GAME_HEIGHT - 500);
     new Hotspot(this, {
-      x: 180,
-      y: GAME_HEIGHT - 500,
-      width: 220,
-      height: 200,
-      label: 'Tiroir notes',
-      onTap: () => {
+      x: GAME_WIDTH - 220,
+      y: STAGE_BOTTOM_Y - 380,
+      width: 320,
+      height: 280,
+      name: 'tiroir de notes',
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(t('scene.ch2.notes_look'));
+      },
+      onPick: () => {
         this.recordTap();
         if (!hasItem('note_botanique') && !hasProgress('ch2.notes_taken')) {
-          this.showNarration(t('scene.ch2.notes_drawer'), () => {
+          this.showNarration(t('scene.ch2.notes_pick'), () => {
             addItem('note_botanique');
             setProgress('ch2.notes_taken');
             notifyInventoryChange();
           });
         } else {
-          this.showNarration(t('scene.ch2.notes_drawer'));
+          this.showNarration(t('scene.ch2.notes_look'));
         }
       },
     });
 
-    // Cards / graine
-    this.drawCardsPile(GAME_WIDTH - 180, GAME_HEIGHT - 500);
     new Hotspot(this, {
-      x: GAME_WIDTH - 180,
-      y: GAME_HEIGHT - 500,
+      x: GAME_WIDTH - 220,
+      y: STAGE_BOTTOM_Y - 200,
       width: 220,
-      height: 200,
-      label: 'Cartes botaniques',
-      onTap: () => {
+      height: 180,
+      name: 'cartes botaniques',
+      onLook: () => {
+        this.recordTap();
+        this.showNarration(t('scene.ch2.cards_look'));
+      },
+      onPick: () => {
         this.recordTap();
         if (!hasProgress('ch2.cards_taken')) {
-          this.showNarration(t('scene.ch2.cards_pile'), () => {
+          this.showNarration(t('scene.ch2.cards_pick'), () => {
             addItem('graine_rare');
             setProgress('ch2.cards_taken');
             notifyInventoryChange();
@@ -117,15 +186,18 @@ export class Ch2Serre extends PuzzleSceneBase {
       },
     });
 
-    // VERA welcome on first entry
-    if (!hasProgress('ch2.vera_greeted')) {
-      this.time.delayedCall(700, () => {
-        this.showVeraSequence(
-          [t('vera.ch2.greeting'), t('vera.ch2.task')],
-          () => setProgress('ch2.vera_greeted')
-        );
-      });
-    }
+    new Hotspot(this, {
+      x: GAME_WIDTH - 100,
+      y: 200,
+      width: 200,
+      height: 200,
+      name: 'VERA',
+      showIndicator: false,
+      onTalk: () => {
+        this.recordTap();
+        this.showVera('Que veux-tu savoir, {name} ?');
+      },
+    });
   }
 
   private applyMix(): void {
@@ -139,84 +211,15 @@ export class Ch2Serre extends PuzzleSceneBase {
     });
   }
 
-  // Override: validate combine when player tries combining via inventory
-  // The actual combine is handled in InventoryBar via tryCombine; here we listen for fert_mix appearing
   protected examineItem(id: ItemId): void {
     super.examineItem(id);
-    // After examining a freshly-created mix, prompt VERA
     if (id === 'fert_mix' && !hasProgress('ch2.mix_made')) {
       setProgress('ch2.mix_made');
       this.time.delayedCall(2000, () => {
         if (this.dialogue) {
-          this.showVera('Parfait. Apporte ce mélange à la Lumira.');
+          this.showVera('Parfait. Apporte ce mélange à la Lumira, {name}.');
         }
       });
     }
-  }
-
-  // === Decorative shapes ===
-  private drawLumira(x: number, y: number): void {
-    const g = this.add.graphics();
-    g.setDepth(-100);
-    // Pot
-    g.fillStyle(COLORS.brassDark, 0.9);
-    g.fillRoundedRect(x - 100, y + 100, 200, 120, 16);
-    g.fillStyle(COLORS.charDeep, 0.7);
-    g.fillEllipse(x, y + 100, 200, 30);
-    // Stem
-    g.fillStyle(COLORS.leafDeep, 1);
-    g.fillRect(x - 8, y - 80, 16, 200);
-    // Leaves
-    g.fillStyle(COLORS.leafLight, 0.95);
-    g.fillCircle(x - 60, y - 20, 50);
-    g.fillCircle(x + 70, y - 30, 60);
-    g.fillCircle(x - 30, y - 100, 45);
-    // Glow flower
-    g.fillStyle(COLORS.sunAmber, 0.9);
-    g.fillCircle(x, y - 130, 28);
-    g.fillStyle(COLORS.sunAmber, 0.3);
-    g.fillCircle(x, y - 130, 60);
-  }
-
-  private drawShelf(x: number, y: number): void {
-    const g = this.add.graphics();
-    g.setDepth(-100);
-    g.fillStyle(COLORS.brassDark, 0.95);
-    g.fillRect(x - 350, y - 60, 700, 18);
-    g.fillRect(x - 350, y + 60, 700, 18);
-    // 4 jars
-    const colors = [COLORS.skyPale, COLORS.leafLight, COLORS.sunAmber, COLORS.brass];
-    for (let i = 0; i < 4; i++) {
-      const jx = x - 240 + i * 160;
-      g.fillStyle(colors[i], 0.85);
-      g.fillRoundedRect(jx - 50, y - 50, 100, 110, 8);
-      g.fillStyle(COLORS.charDeep, 0.85);
-      g.fillRect(jx - 30, y + 30, 60, 14); // label
-    }
-  }
-
-  private drawDrawer(x: number, y: number): void {
-    const g = this.add.graphics();
-    g.setDepth(-100);
-    g.fillStyle(COLORS.brassDark, 0.9);
-    g.fillRoundedRect(x - 110, y - 100, 220, 200, 8);
-    g.fillStyle(COLORS.brass, 0.6);
-    g.fillCircle(x, y, 14); // handle
-    g.lineStyle(3, COLORS.charDeep, 0.8);
-    g.strokeRect(x - 105, y - 95, 210, 190);
-  }
-
-  private drawCardsPile(x: number, y: number): void {
-    const g = this.add.graphics();
-    g.setDepth(-100);
-    for (let i = 0; i < 5; i++) {
-      g.fillStyle(COLORS.cream, 0.92);
-      g.fillRoundedRect(x - 60 + i * 4, y - 80 + i * 6, 120, 160, 6);
-      g.lineStyle(2, COLORS.charDeep, 0.7);
-      g.strokeRoundedRect(x - 60 + i * 4, y - 80 + i * 6, 120, 160, 6);
-    }
-    // Top card flower
-    g.fillStyle(COLORS.sunAmber, 0.95);
-    g.fillCircle(x + 16, y + 6, 18);
   }
 }

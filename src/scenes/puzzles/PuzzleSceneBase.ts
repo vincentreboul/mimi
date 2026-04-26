@@ -1,20 +1,24 @@
 import * as Phaser from 'phaser';
-import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../../config';
+import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT, HUD } from '../../config';
 import { InventoryBar } from '../../objects/InventoryBar';
 import { DialogueBox } from '../../objects/DialogueBox';
 import { HintButton } from '../../objects/HintButton';
+import { VerbBar } from '../../objects/VerbBar';
+import { ActionLabel } from '../../objects/ActionLabel';
 import { hintConfig } from '../../data/puzzles';
 import { startPuzzle, endPuzzle, recordTap } from '../../systems/hint';
-import { setScene, type ChapterId } from '../../systems/save';
-import { playAmbient, stopAmbient } from '../../systems/audio';
+import { setScene, getPlayer, type ChapterId } from '../../systems/save';
+import { stopAmbient } from '../../systems/audio';
 import { t } from '../../systems/narrative';
-import { itemDesc } from '../../data/items';
-import type { ItemId } from '../../data/items';
+import { itemDesc, type ItemId } from '../../data/items';
+import { setActiveVerb, clearTarget } from '../../systems/verbs';
 
 export abstract class PuzzleSceneBase extends Phaser.Scene {
   protected inv!: InventoryBar;
   protected dialogue!: DialogueBox;
   protected hintBtn!: HintButton;
+  protected verbBar!: VerbBar;
+  protected actionLabel!: ActionLabel;
   protected puzzleId!: string;
   protected chapter!: ChapterId;
   protected nextSceneKey: string = '';
@@ -24,30 +28,35 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
     startPuzzle(puzzleId);
     setScene(this.scene.key, this.chapter);
 
-    // Title bar with chapter label
+    // Reset verb to default
+    setActiveVerb('look');
+    clearTarget();
+
+    // Top bar
     const top = this.add.container(0, 0);
     top.setDepth(900);
-    const topBg = this.add.rectangle(0, 0, GAME_WIDTH, 110, COLORS.charDeep, 0.55).setOrigin(0);
+    const topBg = this.add.rectangle(0, 0, GAME_WIDTH, HUD.topBarHeight, COLORS.charDeep, 0.75).setOrigin(0);
     top.add(topBg);
-    const label = this.add.text(40, 36, t('ui.chapter', { n: this.chapter }), {
+    const label = this.add.text(36, 36, t('ui.chapter', { n: this.chapter }), {
       fontFamily: FONTS.mono,
-      fontSize: '28px',
+      fontSize: '32px',
       color: COLORS.hex.brass,
     });
     top.add(label);
 
     // Menu button (top-right)
-    const menuBtn = this.add.container(GAME_WIDTH - 90, 55);
-    const menuBg = this.add.circle(0, 0, 50, COLORS.brassDark, 0.85);
+    const menuBtn = this.add.container(GAME_WIDTH - 100, HUD.topBarHeight / 2);
+    const menuBg = this.add.rectangle(0, 0, 140, 80, COLORS.brassDark, 0.95);
     menuBg.setStrokeStyle(2, COLORS.brass, 1);
-    const menuTxt = this.add.text(0, 0, '☰', {
+    const menuTxt = this.add.text(0, 0, 'MENU', {
       fontFamily: FONTS.body,
-      fontSize: '36px',
+      fontSize: '28px',
       color: COLORS.hex.cream,
+      fontStyle: 'bold',
     }).setOrigin(0.5);
     menuBtn.add([menuBg, menuTxt]);
-    menuBtn.setSize(100, 100);
-    menuBtn.setInteractive(new Phaser.Geom.Circle(0, 0, 50), Phaser.Geom.Circle.Contains);
+    menuBtn.setSize(140, 80);
+    menuBtn.setInteractive(new Phaser.Geom.Rectangle(-70, -40, 140, 80), Phaser.Geom.Rectangle.Contains);
     menuBtn.on('pointerdown', () => {
       this.cameras.main.fadeOut(300, 31, 77, 62);
       this.cameras.main.once('camerafadeoutcomplete', () => {
@@ -57,15 +66,26 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
     });
     top.add(menuBtn);
 
-    // Inventory + Dialogue + Hint
+    // HUD components (order matters for depth)
     this.dialogue = new DialogueBox(this);
-    this.inv = new InventoryBar(this, {
-      onExamine: (id) => this.examineItem(id),
-    });
+    this.actionLabel = new ActionLabel(this);
+    this.verbBar = new VerbBar(this);
+    this.inv = new InventoryBar(this);
     this.hintBtn = new HintButton(this, {
       hintConfig: hintConfig(puzzleId),
       onSkip: () => this.onSkip(),
       onHintGiven: (cue) => this.onHintCue(cue),
+    });
+
+    // Listen to fallback events from hotspots / inventory
+    this.events.on('hotspot-fallback', (e: { message: string }) => {
+      this.showNarration(e.message);
+    });
+    this.events.on('item-look', (e: { itemId: ItemId }) => {
+      this.examineItem(e.itemId);
+    });
+    this.events.on('item-message', (e: { message: string }) => {
+      this.showNarration(e.message);
     });
   }
 
@@ -76,25 +96,37 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
     });
   }
 
+  protected vera(text: string, onDone?: () => void): void {
+    this.showVera(text, onDone);
+  }
+
   protected showVera(text: string, onDone?: () => void): void {
+    const player = getPlayer();
+    const interpolated = text.replaceAll('{name}', player.name || '...');
     this.dialogue.show({
       speaker: 'VERA',
-      text,
+      text: interpolated,
       onComplete: onDone,
     });
   }
 
   protected showNarration(text: string, onDone?: () => void): void {
+    const player = getPlayer();
+    const interpolated = text.replaceAll('{name}', player.name || '...');
     this.dialogue.show({
       speaker: 'NARRATOR',
-      text,
+      text: interpolated,
       onComplete: onDone,
     });
   }
 
   protected showVeraSequence(texts: string[], onAllDone?: () => void): void {
+    const player = getPlayer();
     this.dialogue.showSequence(
-      texts.map((text) => ({ speaker: 'VERA' as const, text })),
+      texts.map((text) => ({
+        speaker: 'VERA' as const,
+        text: text.replaceAll('{name}', player.name || '...'),
+      })),
       onAllDone
     );
   }
@@ -114,11 +146,10 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
   }
 
   protected onHintCue(_cue?: string): void {
-    // Override in subclass to glow specific hotspot
+    // Override in subclass
   }
 
   protected onSkip(): void {
-    // Default: jump to next scene (story-skip)
     this.fadeToScene(this.nextSceneKey);
   }
 }

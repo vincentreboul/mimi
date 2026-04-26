@@ -34,14 +34,14 @@ export class BootScene extends Phaser.Scene {
     this.drawDecoLeaves(g, width, height);
 
     // Title
-    this.add.text(width / 2, height / 2 - 200, 'Mimi', {
+    this.add.text(width / 2, height / 2 - 200, 'KORA', {
       fontFamily: FONTS.display,
-      fontSize: '160px',
+      fontSize: '200px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 - 80, 'Le Jardin Suspendu', {
+    this.add.text(width / 2, height / 2 - 60, 'L\'éveil orbital', {
       fontFamily: FONTS.display,
       fontSize: '48px',
       color: COLORS.hex.brass,
