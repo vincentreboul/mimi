@@ -16,31 +16,29 @@ const ROWS = [
   ['W', 'X', 'C', 'V', 'B', 'N', 'É', 'È', 'Ç', 'À'],
 ];
 
-// Generous gaps so adjacent keys can NEVER overlap visually or in hit area.
 const KEY_W = 90;
 const KEY_H = 110;
 const KEY_GAP = 14;
 const ROW_GAP = 14;
 
-/**
- * In-canvas virtual keyboard, AZERTY layout.
- * Uses PrecisionButton (pointerup with target verification) for laser-precise taps.
- */
-export class VirtualKeyboard extends Phaser.GameObjects.Container {
+/** AZERTY virtual keyboard. PrecisionButtons are placed directly in the scene. */
+export class VirtualKeyboard {
   private value = '';
   private opts: VirtualKeyboardOptions;
+  private buttons: PrecisionButton[] = [];
 
   constructor(scene: Phaser.Scene, opts: VirtualKeyboardOptions) {
-    super(scene, opts.x, opts.y);
     this.opts = opts;
+    const ox = opts.x;
+    const oy = opts.y;
 
     ROWS.forEach((row, ri) => {
       const totalW = row.length * KEY_W + (row.length - 1) * KEY_GAP;
-      const startX = -totalW / 2 + KEY_W / 2;
+      const startX = ox - totalW / 2 + KEY_W / 2;
       row.forEach((letter, ci) => {
         const kx = startX + ci * (KEY_W + KEY_GAP);
-        const ky = ri * (KEY_H + ROW_GAP);
-        this.add(new PrecisionButton(scene, {
+        const ky = oy + ri * (KEY_H + ROW_GAP);
+        this.buttons.push(new PrecisionButton(scene, {
           x: kx, y: ky, width: KEY_W, height: KEY_H,
           label: letter,
           fontSize: 54,
@@ -51,18 +49,18 @@ export class VirtualKeyboard extends Phaser.GameObjects.Container {
     });
 
     // Bottom row: backspace + submit
-    const bottomY = ROWS.length * (KEY_H + ROW_GAP);
+    const bottomY = oy + ROWS.length * (KEY_H + ROW_GAP);
     const backW = 240;
     const submitW = 320;
-    const bx = -(backW + submitW + KEY_GAP) / 2 + backW / 2;
+    const bx = ox - (backW + submitW + KEY_GAP) / 2 + backW / 2;
     const sx = bx + backW / 2 + KEY_GAP + submitW / 2;
-    this.add(new PrecisionButton(scene, {
+    this.buttons.push(new PrecisionButton(scene, {
       x: bx, y: bottomY, width: backW, height: KEY_H,
       label: '⌫ EFFACER',
       fontSize: 26,
       onTap: () => this.backspace(),
     }));
-    this.add(new PrecisionButton(scene, {
+    this.buttons.push(new PrecisionButton(scene, {
       x: sx, y: bottomY, width: submitW, height: KEY_H,
       label: '✓ VALIDER',
       fontSize: 28,
@@ -70,8 +68,11 @@ export class VirtualKeyboard extends Phaser.GameObjects.Container {
       textColor: COLORS.hex.charDeep,
       onTap: () => this.submit(),
     }));
+  }
 
-    scene.add.existing(this);
+  destroy(): void {
+    this.buttons.forEach((b) => b.destroy());
+    this.buttons = [];
   }
 
   private append(letter: string): void {

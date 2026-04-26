@@ -103,24 +103,25 @@ export class Ch1Cryo extends PuzzleSceneBase {
     const termY = STAGE_BOTTOM_Y - 70;
     this.terminalSprite = PixelScene.place(this, 'computerStation1', termX, termY, termScale, { depth: 6 });
 
-    // Pulsing CYAN halo around the terminal — clearly visible behind/around the sprite
-    // Drawn at depth 5.5 (behind the terminal sprite at depth 6) but extending well beyond it
-    const halo = this.add.graphics();
-    halo.setDepth(5.5);
-    // Multiple concentric rings with strong alpha
-    halo.fillStyle(0x00d9ff, 0.65);
-    halo.fillCircle(termX, termY - 220, 220);
-    halo.fillStyle(0x00d9ff, 0.4);
-    halo.fillCircle(termX, termY - 220, 320);
-    halo.fillStyle(0x00d9ff, 0.18);
-    halo.fillCircle(termX, termY - 220, 420);
+    // Pulsing GREEN glow ON the CRT screen of the terminal (rectangle, not big circle)
+    // Computer station sprite is ~273x350 logical at scale 7, screen area is upper ~140px tall
+    const screenGlow = this.add.rectangle(termX, termY - 240, 200, 110, 0x7fb069, 0.45).setDepth(7);
     this.tweens.add({
-      targets: halo,
-      alpha: { from: 0.5, to: 1 },
-      duration: 1100,
+      targets: screenGlow,
+      alpha: { from: 0.25, to: 0.7 },
+      duration: 900,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
+    });
+    // Plus a subtle scanline effect on the screen
+    const scan = this.add.rectangle(termX, termY - 270, 200, 6, 0xa8dadc, 0.6).setDepth(8);
+    this.tweens.add({
+      targets: scan,
+      y: termY - 200,
+      duration: 2200,
+      repeat: -1,
+      ease: 'Linear',
     });
 
     // === Locker (desk substitute) on the left ===

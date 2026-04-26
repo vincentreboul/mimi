@@ -67,6 +67,8 @@ export class DialogueBox extends Phaser.GameObjects.Container {
     scene.add.existing(this);
     this.setDepth(2000);
     this.setVisible(false);
+    // CRITICAL: disable input when hidden so dialog bg doesn't intercept hotspot taps
+    this.bg.disableInteractive();
   }
 
   show(options: DialogueOptions): void {
@@ -82,6 +84,7 @@ export class DialogueBox extends Phaser.GameObjects.Container {
     this.speakerLabel.setText(speakerText);
 
     this.setVisible(true);
+    this.bg.setInteractive({ useHandCursor: true });
     this.scene.tweens.add({
       targets: this,
       alpha: { from: 0, to: 1 },
@@ -144,6 +147,8 @@ export class DialogueBox extends Phaser.GameObjects.Container {
 
   hide(): void {
     if (this.currentTimer) this.currentTimer.destroy();
+    // Disable input IMMEDIATELY so taps don't get intercepted during fade-out
+    this.bg.disableInteractive();
     this.scene.tweens.add({
       targets: this,
       alpha: { from: 1, to: 0 },

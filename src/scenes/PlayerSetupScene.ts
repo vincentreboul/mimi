@@ -138,12 +138,15 @@ export class PlayerSetupScene extends Phaser.Scene {
       lineSpacing: 6,
     }).setOrigin(0, 0.5).setDepth(20);
 
-    // "JOUER" badge bottom-center of card — BIG and tappable
-    this.add.rectangle(cx, cy + h / 2 - 60, 360, 96, COLORS.sunAmber, 1)
-      .setStrokeStyle(4, COLORS.cream).setDepth(20);
-    this.add.text(cx, cy + h / 2 - 60, '▶  JOUER', {
+    // Small "JOUER" badge in the bottom-right corner — visual hint that the card is tappable.
+    // The whole card is the actual tap target (PrecisionButton above).
+    const badgeX = cx + w / 2 - 130;
+    const badgeY = cy + h / 2 - 50;
+    this.add.rectangle(badgeX, badgeY, 220, 70, COLORS.sunAmber, 1)
+      .setStrokeStyle(3, COLORS.cream).setDepth(20);
+    this.add.text(badgeX, badgeY, '▶ JOUER', {
       fontFamily: FONTS.body,
-      fontSize: '48px',
+      fontSize: '32px',
       color: COLORS.hex.charDeep,
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(21);

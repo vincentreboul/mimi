@@ -18,74 +18,64 @@ export interface PrecisionButtonOptions {
 }
 
 /**
- * PrecisionButton — laser-precise tap handling for mobile.
- *
- * Why this exists:
- * - Phaser's default `pointerdown` fires on press, even if the user drags off
- *   before releasing. That makes "I tapped between two buttons" feel like the
- *   wrong one was selected.
- * - The native iOS pattern is: register on `pointerup`, but only if the up event
- *   happens INSIDE the same hit area as the down. Drag-off cancels.
- *
- * - Hit area is EXACTLY the visual rect (no overshoot, no overlap with neighbors).
- * - No scale tween (would shrink the hit area mid-touch).
- * - Visual feedback is a fill-flash on press, reverting on release/cancel.
+ * PrecisionButton — uses the rectangle ITSELF as the interactive object
+ * (no Container nesting that could introduce coordinate offsets).
+ * Hit detection on the rectangle's actual world bounds, exactly matching the visual.
  */
-export class PrecisionButton extends Phaser.GameObjects.Container {
-  private bg: Phaser.GameObjects.Rectangle;
-  private txt: Phaser.GameObjects.Text;
+export class PrecisionButton {
+  public bg: Phaser.GameObjects.Rectangle;
+  public txt: Phaser.GameObjects.Text;
   private opts: PrecisionButtonOptions;
   private origFillColor: number;
+  private origStrokeColor: number;
+  private origTextColor: string;
+  private _selectedState = false;
+  private _scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene, opts: PrecisionButtonOptions) {
-    super(scene, opts.x, opts.y);
+    this._scene = scene;
     this.opts = opts;
 
     const fill = opts.fillColor ?? COLORS.brassDark;
+    const stroke = opts.borderColor ?? COLORS.brass;
+    const txtColor = opts.textColor ?? COLORS.hex.cream;
     this.origFillColor = fill;
+    this.origStrokeColor = stroke;
+    this.origTextColor = txtColor;
 
-    this.bg = scene.add.rectangle(0, 0, opts.width, opts.height, fill, 0.95);
-    this.bg.setStrokeStyle(3, opts.borderColor ?? COLORS.brass, 1);
-    this.add(this.bg);
+    // Rectangle directly placed at world (x, y), centered (default origin 0.5, 0.5).
+    this.bg = scene.add.rectangle(opts.x, opts.y, opts.width, opts.height, fill, 0.95);
+    this.bg.setStrokeStyle(3, stroke, 1);
+    // Make the rectangle itself interactive — Phaser uses its own bounds.
+    this.bg.setInteractive({ useHandCursor: true });
 
-    this.txt = scene.add.text(0, 0, opts.label, {
+    this.txt = scene.add.text(opts.x, opts.y, opts.label, {
       fontFamily: opts.fontFamily ?? FONTS.body,
       fontSize: (opts.fontSize ?? 36) + 'px',
-      color: opts.textColor ?? COLORS.hex.cream,
+      color: txtColor,
       fontStyle: 'bold',
       align: 'center',
       wordWrap: { width: opts.width - 24 },
     }).setOrigin(0.5);
-    this.add(this.txt);
 
-    this.setSize(opts.width, opts.height);
-    // Hit area exactly matches visual — no padding, no overlap with neighbors.
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(-opts.width / 2, -opts.height / 2, opts.width, opts.height),
-      Phaser.Geom.Rectangle.Contains
-    );
-
-    // Fire on pointerdown for instant response (iOS finger taps move slightly,
-    // requiring pointerup-on-same-target makes legit taps feel sluggish/missed).
-    // Adjacency confusion is prevented by zero hit-area overlap above.
-    this.on('pointerdown', () => {
-      this.bg.setFillStyle(COLORS.sunAmber, 1);
+    // Fire on pointerdown for instant response.
+    this.bg.on('pointerdown', () => {
+      const wasSelected = this._selectedState;
+      this.bg.setFillStyle(COLORS.cream, 1);
       playSfx('tap');
       opts.onTap();
-      // Revert color shortly after for visual press feedback
-      scene.time.delayedCall(140, () => {
+      // Revert color after press (unless persistent selected state)
+      scene.time.delayedCall(120, () => {
         if (!this._selectedState) {
           this.bg.setFillStyle(this.origFillColor, 0.95);
+        } else if (this._selectedState && !wasSelected) {
+          // Newly selected — handled by markSelected
         }
       });
     });
 
     if (opts.selected) this.markSelected(true);
-
-    scene.add.existing(this);
   }
-
-  private _selectedState = false;
 
   markSelected(selected: boolean): void {
     this._selectedState = selected;
@@ -97,12 +87,22 @@ export class PrecisionButton extends Phaser.GameObjects.Container {
     } else {
       this.origFillColor = this.opts.fillColor ?? COLORS.brassDark;
       this.bg.setFillStyle(this.origFillColor, 0.95);
-      this.bg.setStrokeStyle(3, this.opts.borderColor ?? COLORS.brass, 1);
-      this.txt.setColor(this.opts.textColor ?? COLORS.hex.cream);
+      this.bg.setStrokeStyle(3, this.origStrokeColor, 1);
+      this.txt.setColor(this.origTextColor);
     }
   }
 
   setLabel(label: string): void {
     this.txt.setText(label);
+  }
+
+  setDepth(d: number): void {
+    this.bg.setDepth(d);
+    this.txt.setDepth(d + 1);
+  }
+
+  destroy(): void {
+    this.bg.destroy();
+    this.txt.destroy();
   }
 }
