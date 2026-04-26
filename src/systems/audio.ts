@@ -75,7 +75,18 @@ const SFX_PROFILES: Record<SfxKind, { freq: number[]; duration: number; type: Os
 };
 
 export function playSfx(kind: SfxKind): void {
-  if (!audioCtx) return;
+  // Lazy-init audio context on first SFX call (works inside user-gesture chains).
+  if (!audioCtx) {
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      audioCtx = new Ctx();
+    } catch {
+      return;
+    }
+  }
+  if (audioCtx.state === 'suspended') {
+    void audioCtx.resume();
+  }
   const settings = getSettings();
   const profile = SFX_PROFILES[kind];
   const now = audioCtx.currentTime;
