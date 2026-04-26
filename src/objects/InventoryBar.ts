@@ -4,6 +4,7 @@ import { getInventory, MAX_SLOTS, onInventoryChange } from '../systems/inventory
 import { ITEMS, type ItemId } from '../data/items';
 import { playSfx } from '../systems/audio';
 import { setTarget, getActiveVerb, setSelectedItem, getSelectedItem, setActiveVerb } from '../systems/verbs';
+import { drawItemIcon } from './ItemIcon';
 
 /**
  * Bottom inventory bar: 6 slots, big enough for fingers, names visible.
@@ -52,17 +53,13 @@ export class InventoryBar extends Phaser.GameObjects.Container {
     bg.setStrokeStyle(3, COLORS.brassDark, 0.8);
     slot.add(bg);
 
-    const icon = scene.add.text(0, -10, '', {
-      fontFamily: FONTS.display,
-      fontSize: '52px',
-      color: COLORS.hex.sunAmber,
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    slot.add(icon);
+    // Pixel-art icon container — populated by drawItemIcon when item is set
+    const iconContainer = scene.add.container(0, -8);
+    slot.add(iconContainer);
 
     const name = scene.add.text(0, 38, '', {
       fontFamily: FONTS.body,
-      fontSize: '18px',
+      fontSize: '16px',
       color: COLORS.hex.cream,
       align: 'center',
       wordWrap: { width: size - 4 },
@@ -76,7 +73,7 @@ export class InventoryBar extends Phaser.GameObjects.Container {
     );
 
     (slot as any).bg = bg;
-    (slot as any).icon = icon;
+    (slot as any).iconContainer = iconContainer;
     (slot as any).name = name;
     (slot as any).itemId = null as ItemId | null;
 
@@ -128,11 +125,16 @@ export class InventoryBar extends Phaser.GameObjects.Container {
       const itemId = (inv[i] ?? null) as ItemId | null;
       (slot as any).itemId = itemId;
       const bg = (slot as any).bg as Phaser.GameObjects.Rectangle;
-      const icon = (slot as any).icon as Phaser.GameObjects.Text;
+      const iconContainer = (slot as any).iconContainer as Phaser.GameObjects.Container;
       const name = (slot as any).name as Phaser.GameObjects.Text;
 
+      // Clear existing icon graphics
+      iconContainer.removeAll(true);
+
       if (itemId && ITEMS[itemId]) {
-        icon.setText(ITEMS[itemId].icon);
+        // Draw pixel-art icon at scale ~0.85 to fit in slot
+        const icon = drawItemIcon(this.scene, itemId, 0.9);
+        iconContainer.add(icon);
         name.setText(ITEMS[itemId].name.split(' ').slice(0, 2).join(' '));
         if (selected === itemId) {
           bg.setStrokeStyle(5, COLORS.sunAmber, 1);
@@ -142,7 +144,6 @@ export class InventoryBar extends Phaser.GameObjects.Container {
           bg.setFillStyle(COLORS.leafDeep, 0.95);
         }
       } else {
-        icon.setText('');
         name.setText('');
         bg.setStrokeStyle(2, COLORS.brassDark, 0.4);
         bg.setFillStyle(COLORS.leafDeep, 0.5);
