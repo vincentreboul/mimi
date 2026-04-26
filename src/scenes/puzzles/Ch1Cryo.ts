@@ -103,15 +103,21 @@ export class Ch1Cryo extends PuzzleSceneBase {
     const termY = STAGE_BOTTOM_Y - 70;
     this.terminalSprite = PixelScene.place(this, 'computerStation1', termX, termY, termScale, { depth: 6 });
 
-    // Pulsing green halo around the terminal screen — signals "I'm interactive"
+    // Pulsing CYAN halo around the terminal — clearly visible behind/around the sprite
+    // Drawn at depth 5.5 (behind the terminal sprite at depth 6) but extending well beyond it
     const halo = this.add.graphics();
-    halo.setDepth(5);
-    halo.fillStyle(0x7fb069, 0.25);
-    halo.fillCircle(termX, termY - 240, 130);
+    halo.setDepth(5.5);
+    // Multiple concentric rings with strong alpha
+    halo.fillStyle(0x00d9ff, 0.65);
+    halo.fillCircle(termX, termY - 220, 220);
+    halo.fillStyle(0x00d9ff, 0.4);
+    halo.fillCircle(termX, termY - 220, 320);
+    halo.fillStyle(0x00d9ff, 0.18);
+    halo.fillCircle(termX, termY - 220, 420);
     this.tweens.add({
       targets: halo,
-      alpha: { from: 0.7, to: 1.0 },
-      duration: 1200,
+      alpha: { from: 0.5, to: 1 },
+      duration: 1100,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
@@ -152,22 +158,26 @@ export class Ch1Cryo extends PuzzleSceneBase {
   }
 
   private spawnFrostParticles(): void {
-    // Tiny floating particles to give the room atmosphere
-    for (let i = 0; i < 16; i++) {
+    // Larger, more visible floating particles for atmosphere (cyan flecks)
+    for (let i = 0; i < 30; i++) {
       const x = Math.random() * GAME_WIDTH;
       const y = Math.random() * STAGE_BOTTOM_Y;
-      const size = 2 + Math.random() * 3;
-      const dot = this.add.rectangle(x, y, size, size, 0xa8dadc, 0.7).setDepth(4);
-      const drift = 30 + Math.random() * 60;
+      const size = 6 + Math.random() * 10;
+      // Bright pixel-art flake (chunky square with a brighter center)
+      const dot = this.add.rectangle(x, y, size, size, 0xa8dadc, 0.95).setDepth(15);
+      dot.setStrokeStyle(2, 0xf4e9d8, 1);
+      const driftY = 80 + Math.random() * 140;
+      const driftX = (Math.random() - 0.5) * 60;
       this.tweens.add({
         targets: dot,
-        y: y + drift,
-        alpha: { from: 0.7, to: 0.2 },
-        duration: 4000 + Math.random() * 4000,
+        y: y + driftY,
+        x: x + driftX,
+        alpha: { from: 0.95, to: 0.2 },
+        duration: 5000 + Math.random() * 4000,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
-        delay: Math.random() * 2000,
+        delay: Math.random() * 2500,
       });
     }
   }
