@@ -156,17 +156,15 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     c.add([bg, inner, txt]);
     c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
+    const hitPad = 12;
+    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2 - hitPad, -h / 2 - hitPad, w + hitPad * 2, h + hitPad * 2), Phaser.Geom.Rectangle.Contains);
     c.setDepth(30);
     c.on('pointerdown', () => {
       playSfx('tap');
-      this.tweens.add({
-        targets: c,
-        scale: { from: 1, to: 0.96 },
-        duration: 80,
-        yoyo: true,
-        onComplete: onTap,
-      });
+      const origColor = bg.fillColor;
+      bg.setFillStyle(COLORS.sunAmber, 1);
+      this.time.delayedCall(80, () => bg.setFillStyle(origColor, 0.95));
+      this.time.delayedCall(120, onTap);
     });
     return c;
   }
@@ -286,10 +284,14 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     c.add([bg, inner, txt]);
     c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
+    const hitPad = 10;
+    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2 - hitPad, -h / 2 - hitPad, w + hitPad * 2, h + hitPad * 2), Phaser.Geom.Rectangle.Contains);
     c.on('pointerdown', () => {
       playSfx('tap');
-      this.tweens.add({ targets: c, scale: { from: 1, to: 0.96 }, duration: 80, yoyo: true, onComplete: onTap });
+      const origColor = bg.fillColor;
+      bg.setFillStyle(COLORS.sunAmber, 1);
+      this.time.delayedCall(70, () => bg.setFillStyle(origColor, 0.95));
+      this.time.delayedCall(110, onTap);
     });
     return c;
   }

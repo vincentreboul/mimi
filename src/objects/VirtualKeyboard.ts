@@ -68,10 +68,18 @@ export class VirtualKeyboard extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
     c.add([bg, txt]);
     c.setSize(w, h);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
+    // Hit area larger than visual to absorb missed taps + never shrink during animation
+    const hitPad = 12;
+    c.setInteractive(
+      new Phaser.Geom.Rectangle(-w / 2 - hitPad, -h / 2 - hitPad, w + hitPad * 2, h + hitPad * 2),
+      Phaser.Geom.Rectangle.Contains
+    );
     c.on('pointerdown', () => {
       playSfx('tap');
-      scene.tweens.add({ targets: c, scale: { from: 1, to: 0.92 }, duration: 70, yoyo: true });
+      // Press feedback: color flash (no scale, so hit area unaffected)
+      const origColor = bg.fillColor;
+      bg.setFillStyle(COLORS.cream, 1);
+      scene.time.delayedCall(60, () => bg.setFillStyle(origColor, 0.95));
       onTap();
     });
     return c;

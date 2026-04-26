@@ -62,21 +62,40 @@ export class Hotspot extends Phaser.GameObjects.Container {
   }
 
   private addIndicator(): void {
-    // Small subtle pulsing dot to telegraph interactability
+    // Visible pulsing dot — orange ring + bright inner dot
     const dot = this.scene.add.container(0, 0);
-    const ring = this.scene.add.circle(0, 0, 14, COLORS.sunAmber, 0).setStrokeStyle(2, COLORS.sunAmber, 0.6);
-    const inner = this.scene.add.circle(0, 0, 5, COLORS.sunAmber, 0.7);
-    dot.add([ring, inner]);
+    const outer = this.scene.add.circle(0, 0, 18, COLORS.sunAmber, 0).setStrokeStyle(4, COLORS.sunAmber, 1);
+    const inner = this.scene.add.circle(0, 0, 10, COLORS.sunAmber, 1);
+    dot.add([outer, inner]);
     this.add(dot);
     this.indicator = dot;
 
     this.scene.tweens.add({
-      targets: ring,
-      scale: { from: 1, to: 2 },
-      alpha: { from: 0.6, to: 0 },
-      duration: 2200,
+      targets: outer,
+      scale: { from: 1, to: 2.2 },
+      alpha: { from: 1, to: 0 },
+      duration: 1400,
       repeat: -1,
       ease: 'Sine.easeOut',
+    });
+    this.scene.tweens.add({
+      targets: inner,
+      alpha: { from: 1, to: 0.5 },
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  /** Flash the hotspot box visibly. Used on scene entry to show all interactables. */
+  flashIntro(): void {
+    this.showHighlight(0.4);
+    this.scene.tweens.add({
+      targets: this.highlight,
+      alpha: { from: 0.4, to: 0 },
+      duration: 1200,
+      delay: 0,
+      onComplete: () => this.fadeHighlight(),
     });
   }
 

@@ -5,9 +5,11 @@ import { DialogueBox } from '../../objects/DialogueBox';
 import { HintButton } from '../../objects/HintButton';
 import { VerbBar } from '../../objects/VerbBar';
 import { ActionLabel } from '../../objects/ActionLabel';
+import { TutorialOverlay } from '../../objects/TutorialOverlay';
+import { Hotspot } from '../../objects/Hotspot';
 import { hintConfig } from '../../data/puzzles';
 import { startPuzzle, endPuzzle, recordTap } from '../../systems/hint';
-import { setScene, getPlayer, type ChapterId } from '../../systems/save';
+import { setScene, setProgress, hasProgress, getPlayer, type ChapterId } from '../../systems/save';
 import { stopAmbient } from '../../systems/audio';
 import { t } from '../../systems/narrative';
 import { itemDesc, type ItemId } from '../../data/items';
@@ -86,6 +88,29 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
     });
     this.events.on('item-message', (e: { message: string }) => {
       this.showNarration(e.message);
+    });
+
+    // Show tutorial overlay on first chapter ever
+    if (!hasProgress('global.tutorial_shown')) {
+      this.time.delayedCall(400, () => {
+        new TutorialOverlay(this, () => {
+          setProgress('global.tutorial_shown');
+          // After tutorial dismissed, briefly flash all hotspots
+          this.flashAllHotspots();
+        });
+      });
+    } else {
+      // On subsequent chapters: brief hotspot flash on scene entry
+      this.time.delayedCall(900, () => this.flashAllHotspots());
+    }
+  }
+
+  /** Briefly flash ALL hotspots in the scene to show what's interactive */
+  protected flashAllHotspots(): void {
+    this.children.list.forEach((child) => {
+      if (child instanceof Hotspot) {
+        child.flashIntro();
+      }
     });
   }
 

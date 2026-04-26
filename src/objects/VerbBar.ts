@@ -58,17 +58,18 @@ export class VerbBar extends Phaser.GameObjects.Container {
     container.add(txt);
 
     container.setSize(HUD.verbButtonWidth, HUD.verbButtonHeight);
+    const hitPad = 8;
     container.setInteractive(
-      new Phaser.Geom.Rectangle(-HUD.verbButtonWidth / 2, -HUD.verbButtonHeight / 2, HUD.verbButtonWidth, HUD.verbButtonHeight),
+      new Phaser.Geom.Rectangle(-HUD.verbButtonWidth / 2 - hitPad, -HUD.verbButtonHeight / 2 - hitPad, HUD.verbButtonWidth + hitPad * 2, HUD.verbButtonHeight + hitPad * 2),
       Phaser.Geom.Rectangle.Contains
     );
     container.on('pointerdown', () => {
       playSfx('tap');
-      scene.tweens.add({
-        targets: container,
-        scale: { from: 1, to: 0.95 },
-        duration: 80,
-        yoyo: true,
+      // Flash color, no scale tween (preserves hit area)
+      const origColor = bg.fillColor;
+      bg.setFillStyle(COLORS.cream, 1);
+      scene.time.delayedCall(70, () => {
+        if (verb !== getActiveVerb()) bg.setFillStyle(origColor, 0.95);
       });
       setActiveVerb(verb);
     });
