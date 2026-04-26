@@ -5,12 +5,23 @@ export type Mood = 'cryo' | 'serre' | 'atelier' | 'coupole';
 
 /**
  * SceneBackground draws a procedural stylized scene per chapter mood.
- * No image assets needed — keeps total payload < 200 KB.
+ * Caches the rasterised result in a global texture so subsequent calls (within
+ * the same Phaser game) reuse the bitmap instead of re-running the Graphics ops.
  */
 export class SceneBackground {
-  static draw(scene: Phaser.Scene, mood: Mood): void {
-    const g = scene.add.graphics();
-    g.setDepth(-1000);
+  static draw(scene: Phaser.Scene, mood: Mood): Phaser.GameObjects.Image | Phaser.GameObjects.Graphics {
+    const cacheKey = `__bg_cache_${mood}`;
+
+    // Texture already cached? Just blit it.
+    if (scene.textures.exists(cacheKey)) {
+      const img = scene.add.image(0, 0, cacheKey).setOrigin(0);
+      img.setDepth(-1000);
+      return img;
+    }
+
+    // First call for this mood — draw into an off-screen Graphics, snapshot to a
+    // texture, then add the image. Subsequent calls (any scene) hit the cache.
+    const g = scene.make.graphics({ x: 0, y: 0 }, false);
     const w = GAME_WIDTH;
     const h = GAME_HEIGHT;
 
@@ -28,6 +39,13 @@ export class SceneBackground {
         SceneBackground.drawCoupole(g, w, h);
         break;
     }
+
+    g.generateTexture(cacheKey, w, h);
+    g.destroy();
+
+    const img = scene.add.image(0, 0, cacheKey).setOrigin(0);
+    img.setDepth(-1000);
+    return img;
   }
 
   private static drawCryo(g: Phaser.GameObjects.Graphics, w: number, h: number): void {

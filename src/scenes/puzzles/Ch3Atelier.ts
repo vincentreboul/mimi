@@ -9,6 +9,7 @@ import { PUZZLE_IDS, SOLUTIONS } from '../../data/puzzles';
 import { t } from '../../systems/narrative';
 import { ITEMS, type ItemId } from '../../data/items';
 import { playSfx } from '../../systems/audio';
+import { CH3_SPRITES } from '../../data/assets';
 
 const CIRCUIT_COMPONENTS: ItemId[] = ['comp_resistor', 'comp_capa', 'comp_diode', 'comp_led'];
 
@@ -27,6 +28,7 @@ export class Ch3Atelier extends PuzzleSceneBase {
   init(): void {
     this.chapter = 3;
     this.nextSceneKey = 'Ch4Coupole';
+    this.queueSprites(CH3_SPRITES);
   }
 
   create(): void {

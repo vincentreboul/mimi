@@ -8,6 +8,7 @@ import { setProgress, hasProgress } from '../../systems/save';
 import { PUZZLE_IDS } from '../../data/puzzles';
 import { t } from '../../systems/narrative';
 import type { ItemId } from '../../data/items';
+import { CH2_SPRITES } from '../../data/assets';
 
 export class Ch2Serre extends PuzzleSceneBase {
   constructor() {
@@ -17,6 +18,7 @@ export class Ch2Serre extends PuzzleSceneBase {
   init(): void {
     this.chapter = 2;
     this.nextSceneKey = 'Ch3Atelier';
+    this.queueSprites(CH2_SPRITES);
   }
 
   create(): void {

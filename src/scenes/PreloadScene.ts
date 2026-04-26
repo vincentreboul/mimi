@@ -1,7 +1,12 @@
 import * as Phaser from 'phaser';
-import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../config';
-import { SPRITES, PLANTS, ASSETS_BASE } from '../data/assets';
+import { COLORS, FONTS } from '../config';
+import { SHARED_SPRITES, MENU_SPRITES, ASSETS_BASE } from '../data/assets';
 import { hasPlayer } from '../systems/save';
+
+/** Encode each path segment so files like "plants/GREEN_00.png" survive spaces / accents. */
+function assetUrl(file: string): string {
+  return ASSETS_BASE + file.split('/').map((p) => encodeURIComponent(p)).join('/');
+}
 
 export class PreloadScene extends Phaser.Scene {
   private progressBar?: Phaser.GameObjects.Rectangle;
@@ -19,17 +24,14 @@ export class PreloadScene extends Phaser.Scene {
       if (this.progressText) this.progressText.setText(`${Math.round(v * 100)} %`);
     });
 
-    // Load all sci-fi sprites (encode spaces in filenames)
-    for (const [key, file] of Object.entries(SPRITES)) {
-      this.load.image(key, ASSETS_BASE + encodeURIComponent(file));
-    }
-
-    // Load all plants
-    for (const [key, file] of Object.entries(PLANTS)) {
-      // PLANTS paths include "plants/" prefix — encode each segment separately
-      const parts = file.split('/').map((p) => encodeURIComponent(p));
-      this.load.image(key, ASSETS_BASE + parts.join('/'));
-    }
+    // Load shared + menu sprites only — chapter sprites lazy-load in their own init().
+    const queue = (group: Record<string, string>) => {
+      for (const [key, file] of Object.entries(group)) {
+        this.load.image(key, assetUrl(file));
+      }
+    };
+    queue(SHARED_SPRITES);
+    queue(MENU_SPRITES);
   }
 
   private drawProgressUI(): void {

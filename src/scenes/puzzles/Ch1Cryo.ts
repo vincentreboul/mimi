@@ -8,6 +8,7 @@ import { addItem, hasItem, notifyInventoryChange } from '../../systems/inventory
 import { setProgress, hasProgress, getPlayer } from '../../systems/save';
 import { PUZZLE_IDS, SOLUTIONS } from '../../data/puzzles';
 import { t } from '../../systems/narrative';
+import { CH1_SPRITES } from '../../data/assets';
 
 export class Ch1Cryo extends PuzzleSceneBase {
   private veraGreeted = false;
@@ -25,6 +26,7 @@ export class Ch1Cryo extends PuzzleSceneBase {
   init(): void {
     this.chapter = 1;
     this.nextSceneKey = 'Ch2Serre';
+    this.queueSprites(CH1_SPRITES);
   }
 
   create(): void {
@@ -159,28 +161,27 @@ export class Ch1Cryo extends PuzzleSceneBase {
   }
 
   private spawnFrostParticles(): void {
-    // Larger, more visible floating particles for atmosphere (cyan flecks)
-    for (let i = 0; i < 30; i++) {
-      const x = Math.random() * GAME_WIDTH;
-      const y = Math.random() * STAGE_BOTTOM_Y;
-      const size = 6 + Math.random() * 10;
-      // Bright pixel-art flake (chunky square with a brighter center)
-      const dot = this.add.rectangle(x, y, size, size, 0xa8dadc, 0.95).setDepth(15);
-      dot.setStrokeStyle(2, 0xf4e9d8, 1);
-      const driftY = 80 + Math.random() * 140;
-      const driftX = (Math.random() - 0.5) * 60;
-      this.tweens.add({
-        targets: dot,
-        y: y + driftY,
-        x: x + driftX,
-        alpha: { from: 0.95, to: 0.2 },
-        duration: 5000 + Math.random() * 4000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: Math.random() * 2500,
-      });
+    // Single ParticleEmitter — replaces 30 individual Rectangles + infinite tweens.
+    // Generates a small white-circle texture once and reuses it.
+    if (!this.textures.exists('frost_particle')) {
+      const g = this.make.graphics({ x: 0, y: 0 }, false);
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(4, 4, 4);
+      g.generateTexture('frost_particle', 8, 8);
+      g.destroy();
     }
+    const emitter = this.add.particles(0, 0, 'frost_particle', {
+      x: { min: 0, max: GAME_WIDTH },
+      y: 0,
+      speedY: { min: 10, max: 30 },
+      speedX: { min: -5, max: 5 },
+      lifespan: 8000,
+      alpha: { start: 0.6, end: 0 },
+      scale: { min: 0.5, max: 1.2 },
+      quantity: 1,
+      frequency: 250,
+    });
+    emitter.setDepth(15);
   }
 
   private drawPhotoFrame(x: number, y: number): Phaser.GameObjects.Container {

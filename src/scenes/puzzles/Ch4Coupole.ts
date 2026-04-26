@@ -9,6 +9,7 @@ import { PUZZLE_IDS, SOLUTIONS } from '../../data/puzzles';
 import { t } from '../../systems/narrative';
 import { ITEMS, type ItemId } from '../../data/items';
 import { playSfx } from '../../systems/audio';
+import { CH4_SPRITES } from '../../data/assets';
 
 export class Ch4Coupole extends PuzzleSceneBase {
   private leftSlot?: { container: Phaser.GameObjects.Container; placed: ItemId | null; name: Phaser.GameObjects.Text };
@@ -24,6 +25,7 @@ export class Ch4Coupole extends PuzzleSceneBase {
   init(): void {
     this.chapter = 4;
     this.nextSceneKey = 'EpilogueScene';
+    this.queueSprites(CH4_SPRITES);
   }
 
   create(): void {

@@ -1,3 +1,5 @@
+import '@fontsource/vt323';
+import '@fontsource/press-start-2p';
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, BG_COLOR } from './config';
 import { BootScene } from './scenes/BootScene';
@@ -72,12 +74,23 @@ document.addEventListener('touchend', unlockOnce, { once: false });
 document.addEventListener('mousedown', unlockOnce, { once: false });
 document.addEventListener('keydown', unlockOnce, { once: false });
 
-// Pause/resume audio on tab visibility change (iOS Safari fix)
+// Pause/resume audio AND scenes on tab visibility change
+// (iOS Safari fix + battery savings — no useless ticks while backgrounded)
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    game.scene.scenes.forEach((s) => s.scene.isActive() && s.sound?.pauseAll());
+    game.scene.scenes.forEach((s) => {
+      if (s.scene.isActive()) {
+        s.sound?.pauseAll();
+        s.scene.pause();
+      }
+    });
   } else {
-    game.scene.scenes.forEach((s) => s.scene.isActive() && s.sound?.resumeAll());
+    game.scene.scenes.forEach((s) => {
+      if (s.scene.isPaused()) {
+        s.sound?.resumeAll();
+        s.scene.resume();
+      }
+    });
   }
 });
 

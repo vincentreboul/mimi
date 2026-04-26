@@ -14,6 +14,7 @@ import { stopAmbient } from '../../systems/audio';
 import { t } from '../../systems/narrative';
 import { itemDesc, type ItemId } from '../../data/items';
 import { setActiveVerb, clearTarget } from '../../systems/verbs';
+import { ASSETS_BASE } from '../../data/assets';
 
 export abstract class PuzzleSceneBase extends Phaser.Scene {
   protected inv!: InventoryBar;
@@ -24,6 +25,18 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
   protected puzzleId!: string;
   protected chapter!: ChapterId;
   protected nextSceneKey: string = '';
+
+  /**
+   * Queue chapter-specific sprites in this scene's loader. Skips textures already
+   * cached, so re-entering a scene is a no-op. Call from `init()`.
+   */
+  protected queueSprites(group: Record<string, string>): void {
+    for (const [key, file] of Object.entries(group)) {
+      if (this.textures.exists(key)) continue;
+      const url = ASSETS_BASE + file.split('/').map((p) => encodeURIComponent(p)).join('/');
+      this.load.image(key, url);
+    }
+  }
 
   protected setupHud(puzzleId: string): void {
     this.puzzleId = puzzleId;

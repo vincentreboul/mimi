@@ -8,6 +8,7 @@ const CHAPTER_DESTINATIONS: Record<ChapterId, string> = {
   2: 'Ch2Serre',
   3: 'Ch3Atelier',
   4: 'Ch4Coupole',
+  5: 'EpilogueScene', // Ch5 not yet built — fall back to epilogue
 };
 
 export class ChapterIntroScene extends Phaser.Scene {
