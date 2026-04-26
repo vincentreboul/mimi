@@ -89,9 +89,10 @@ export class Keypad {
       const digit = String(i + 1);
       this.makeKey(x, y, btnSize, digit, () => this.appendDigit(digit), false, baseDepth + 3);
     }
+    // Bottom row aligned with digit columns 1/2/3 (no overlap!)
     const zeroY = startY + 3 * (btnSize + gap);
-    this.makeKey(cx, zeroY, btnSize, '0', () => this.appendDigit('0'), false, baseDepth + 3);
     this.makeKey(startX, zeroY, btnSize, '⌫', () => this.backspace(), false, baseDepth + 3);
+    this.makeKey(startX + (btnSize + gap), zeroY, btnSize, '0', () => this.appendDigit('0'), false, baseDepth + 3);
     this.makeKey(startX + 2 * (btnSize + gap), zeroY, btnSize, '✓', () => this.validate(), true, baseDepth + 3);
   }
 

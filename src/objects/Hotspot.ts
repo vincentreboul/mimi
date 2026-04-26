@@ -51,9 +51,10 @@ export class Hotspot {
   }
 
   private addIndicator(scene: Phaser.Scene): void {
+    // High depth (50) so indicators float ABOVE scene sprites (depth 5-15)
     this.indicatorOuter = scene.add.circle(this.config.x, this.config.y, 18, COLORS.sunAmber, 0)
-      .setStrokeStyle(4, COLORS.sunAmber, 1);
-    this.indicatorInner = scene.add.circle(this.config.x, this.config.y, 10, COLORS.sunAmber, 1);
+      .setStrokeStyle(4, COLORS.sunAmber, 1).setDepth(50);
+    this.indicatorInner = scene.add.circle(this.config.x, this.config.y, 10, COLORS.sunAmber, 1).setDepth(51);
 
     scene.tweens.add({
       targets: this.indicatorOuter,

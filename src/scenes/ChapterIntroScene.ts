@@ -82,12 +82,10 @@ export class ChapterIntroScene extends Phaser.Scene {
       repeat: -1,
     });
 
-    // Tap to proceed (after a small delay)
-    this.time.delayedCall(2000, () => {
-      const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0);
-      overlay.setInteractive();
-      overlay.on('pointerdown', () => this.proceed());
-    });
+    // Tap to proceed — IMMEDIATELY interactive (no 2s deadzone)
+    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0).setOrigin(0);
+    overlay.setInteractive({ useHandCursor: true });
+    overlay.on('pointerdown', () => this.proceed());
   }
 
   private proceed(): void {

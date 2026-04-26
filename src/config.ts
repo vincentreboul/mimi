@@ -30,11 +30,12 @@ export const COLORS = {
   },
 } as const;
 
-// Pixel-art typography — VT323 readable body, Press Start 2P iconic display
+// Pixel-art typography — VT323 disambiguates 0/O, 2/8, A/R better than Pixelify Sans.
+// Press Start 2P reserved for titles only (too chunky for body at small sizes).
 export const FONTS = {
-  body: '"Pixelify Sans", "VT323", monospace',  // pixel-art readable for UI
-  display: '"Press Start 2P", "VT323", monospace', // iconic retro arcade for titles
-  mono: '"VT323", monospace',                    // diegetic terminals
+  body: '"VT323", monospace',                      // PRIMARY readable — large and crisp
+  display: '"Press Start 2P", "VT323", monospace', // ICONIC titles only
+  mono: '"VT323", monospace',                      // diegetic terminals
 } as const;
 
 // HUD layout — touch-first, generous targets (iPhone). Compact to give the scene more height.

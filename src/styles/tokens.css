@@ -18,8 +18,8 @@
   --highlight: var(--sun-amber);
   --link: var(--sky-pale);
 
-  /* Typography — pixel-art aware */
-  --font-body: 'Pixelify Sans', 'VT323', monospace;
+  /* Typography — VT323 for body legibility */
+  --font-body: 'VT323', monospace;
   --font-display: 'Press Start 2P', 'VT323', monospace;
   --font-mono: 'VT323', monospace;
 

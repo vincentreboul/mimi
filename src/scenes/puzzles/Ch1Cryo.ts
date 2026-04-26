@@ -239,31 +239,10 @@ export class Ch1Cryo extends PuzzleSceneBase {
       },
     });
 
-    // Left empty pod
-    new Hotspot(this, {
-      x: 280,
-      y: STAGE_BOTTOM_Y - 360,
-      width: 240,
-      height: 580,
-      name: 'cryo-capsule vide',
-      onLook: () => {
-        this.recordTap();
-        this.showNarration(t('scene.ch1.empty_pod'));
-      },
-    });
-
-    // Right empty pod
-    new Hotspot(this, {
-      x: GAME_WIDTH - 280,
-      y: STAGE_BOTTOM_Y - 360,
-      width: 240,
-      height: 580,
-      name: 'cryo-capsule vide',
-      onLook: () => {
-        this.recordTap();
-        this.showNarration(t('scene.ch1.empty_pod'));
-      },
-    });
+    // Empty pods — REMOVED. They were giving "rien d'intéressant" but their
+    // 240x580 hit areas overlapped the locker AND the photo frame, blocking
+    // pickup of the date-clue. Pods are still visible (sprites stay) but
+    // not interactive — no gameplay loss since they only narrated flavor.
 
     // Locker (with badge & note) — primary tap also picks up
     const pickLocker = () => {
