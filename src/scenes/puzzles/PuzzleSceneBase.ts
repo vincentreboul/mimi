@@ -104,10 +104,10 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
     }
   }
 
-  /** Briefly flash hotspots — no-op now that Hotspot uses a Rectangle directly.
-   * The persistent pulsing indicator dots already telegraph interactability. */
+  /** Briefly flash all hotspot zones on scene entry to show players where to tap. */
   protected flashAllHotspots(): void {
-    // Indicators already pulse continuously; no extra flash needed.
+    const list = ((this as any).__hotspots ?? []) as Hotspot[];
+    list.forEach((h, i) => h.flashIntro(i * 60));
   }
 
   protected examineItem(id: ItemId): void {

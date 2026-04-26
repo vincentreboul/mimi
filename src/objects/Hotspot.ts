@@ -10,11 +10,11 @@ export interface HotspotConfig {
   width?: number;
   height?: number;
   name: string;
-  label?: string;                  // legacy alias
+  label?: string;
   shape?: 'rect' | 'circle';
   showIndicator?: boolean;
   glow?: boolean;
-  onTap?: () => void;              // legacy single-action handler
+  onTap?: () => void;
   onLook?: () => void;
   onPick?: () => void;
   onUse?: (item?: ItemId) => void;
@@ -23,8 +23,9 @@ export interface HotspotConfig {
 }
 
 /**
- * Hotspot — uses the rectangle ITSELF as the interactive object (no Container nesting,
- * no coordinate offsets). Indicator dot is added separately to the scene.
+ * Hotspot — uses the rectangle ITSELF as the interactive object (no Container nesting).
+ * The rectangle is at depth 30 (above sprites at depth 5-15).
+ * The indicator dot is ALSO interactive (routes to same handler) so users can tap the visible dot.
  */
 export class Hotspot {
   public bg: Phaser.GameObjects.Rectangle;
@@ -38,23 +39,32 @@ export class Hotspot {
     const w = Math.max(config.width ?? HUD.touchTargetMin, HUD.touchTargetMin);
     const h = Math.max(config.height ?? HUD.touchTargetMin, HUD.touchTargetMin);
 
-    // Highlight rect — interactive, exactly matches the visual zone.
-    this.bg = scene.add.rectangle(config.x, config.y, w, h, COLORS.sunAmber, 0);
+    // Hot zone — slightly visible (alpha 0.05) and at depth 30 (above all scene sprites)
+    this.bg = scene.add.rectangle(config.x, config.y, w, h, COLORS.sunAmber, 0.05);
     this.bg.setStrokeStyle(0, COLORS.sunAmber, 0);
+    this.bg.setDepth(30);
     this.bg.setInteractive({ useHandCursor: true });
 
-    this.bg.on('pointerover', () => this.showHighlight(0.2));
-    this.bg.on('pointerout', () => this.fadeHighlight());
+    this.bg.on('pointerover', () => this.showHighlight(0.18));
+    this.bg.on('pointerout', () => this.bg.setFillStyle(COLORS.sunAmber, 0.05));
     this.bg.on('pointerdown', () => this.onTap());
 
     if (config.showIndicator !== false) this.addIndicator(scene);
+
+    // Auto-register on scene so PuzzleSceneBase.flashAllHotspots can find us
+    const list = ((scene as any).__hotspots ??= []) as Hotspot[];
+    list.push(this);
   }
 
   private addIndicator(scene: Phaser.Scene): void {
-    // High depth (50) so indicators float ABOVE scene sprites (depth 5-15)
-    this.indicatorOuter = scene.add.circle(this.config.x, this.config.y, 18, COLORS.sunAmber, 0)
-      .setStrokeStyle(4, COLORS.sunAmber, 1).setDepth(50);
-    this.indicatorInner = scene.add.circle(this.config.x, this.config.y, 10, COLORS.sunAmber, 1).setDepth(51);
+    // Outer ring at depth 50, inner solid dot at depth 51 — both above hot zone
+    this.indicatorOuter = scene.add.circle(this.config.x, this.config.y, 22, COLORS.sunAmber, 0)
+      .setStrokeStyle(5, COLORS.sunAmber, 1).setDepth(50);
+    this.indicatorInner = scene.add.circle(this.config.x, this.config.y, 14, COLORS.sunAmber, 1).setDepth(51);
+
+    // Both dots are interactive — tap on dot → fire same handler as hot zone
+    this.indicatorInner.setInteractive({ useHandCursor: true });
+    this.indicatorInner.on('pointerdown', () => this.onTap());
 
     scene.tweens.add({
       targets: this.indicatorOuter,
@@ -85,14 +95,14 @@ export class Hotspot {
 
   fadeHighlight(): void {
     this.bg.setStrokeStyle(0, COLORS.sunAmber, 0);
-    this.bg.setFillStyle(COLORS.sunAmber, 0);
+    this.bg.setFillStyle(COLORS.sunAmber, 0.05);
   }
 
   pulse(): void {
     const scene = this.bg.scene;
     scene.tweens.add({
       targets: this.bg,
-      alpha: { from: 0.6, to: 0 },
+      alpha: { from: 0.6, to: 0.05 },
       duration: 320,
       ease: 'Cubic.easeOut',
       onStart: () => {
@@ -101,13 +111,15 @@ export class Hotspot {
     });
   }
 
-  flashIntro(): void {
-    this.showHighlight(0.4);
+  /** Flash the hotspot box visibly on scene entry. */
+  flashIntro(delay = 0): void {
+    this.bg.setFillStyle(COLORS.sunAmber, 0.45);
     this.bg.scene.tweens.add({
       targets: this.bg,
-      alpha: { from: 0.4, to: 0 },
-      duration: 1200,
-      onComplete: () => this.fadeHighlight(),
+      alpha: { from: 0.45, to: 0.05 },
+      duration: 1500,
+      delay,
+      onComplete: () => this.bg.setFillStyle(COLORS.sunAmber, 0.05),
     });
   }
 

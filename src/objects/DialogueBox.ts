@@ -10,9 +10,9 @@ export interface DialogueOptions {
   autoAdvanceMs?: number;
 }
 
-const BOX_HEIGHT = 360;
+const BOX_HEIGHT = 300;     // smaller — covers less of the scene
 const PADDING = 40;
-const TYPEWRITER_BASE = 16; // ms per char
+const TYPEWRITER_BASE = 14; // ms per char (faster)
 
 export class DialogueBox extends Phaser.GameObjects.Container {
   private bg: Phaser.GameObjects.Rectangle;
