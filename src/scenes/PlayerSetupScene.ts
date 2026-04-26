@@ -150,43 +150,82 @@ export class PlayerSetupScene extends Phaser.Scene {
   }
 
   private drawPortraitIcon(x: number, y: number, profile: CharacterProfile): void {
-    // Pixel art portrait — chunky square frame with stylized icon
+    // Pixel art profession-icon panel (cleaner than a crude human portrait)
     const g = this.add.graphics();
     g.setDepth(15);
-    // Frame
+    // Outer frame (brass with darker inset)
     g.fillStyle(COLORS.brass, 1);
     g.fillRect(x - 110, y - 130, 220, 260);
-    g.fillStyle(0x1a3a40, 1);
-    g.fillRect(x - 100, y - 120, 200, 240);
+    g.fillStyle(COLORS.brassDark, 1);
+    g.fillRect(x - 102, y - 122, 204, 244);
+    g.fillStyle(0x0d2230, 1);
+    g.fillRect(x - 96, y - 116, 192, 232);
 
-    // Stylized character silhouette
-    const skin = profile.gender === 'f' ? 0xf4d5a0 : 0xe8b893;
-    const hair = profile.gender === 'f' ? 0x6b4226 : 0x3a2818;
-    const suit = profile.gender === 'f' ? 0xa8dadc : 0x88ad8a;
-
-    // Body (suit)
-    g.fillStyle(suit, 1);
-    g.fillRect(x - 60, y + 10, 120, 100);
-    // Neck
-    g.fillStyle(skin, 1);
-    g.fillRect(x - 22, y - 14, 44, 30);
-    // Head
-    g.fillStyle(skin, 1);
-    g.fillRect(x - 50, y - 90, 100, 90);
-    // Hair
-    g.fillStyle(hair, 1);
-    g.fillRect(x - 56, y - 100, 112, 28);
     if (profile.gender === 'f') {
-      g.fillRect(x - 60, y - 80, 14, 60);
-      g.fillRect(x + 46, y - 80, 14, 60);
+      // ANNA — biologist: a glowing pixel-art plant in a pot
+      // Pot
+      g.fillStyle(COLORS.brass, 1);
+      g.fillRect(x - 36, y + 50, 72, 36);
+      g.fillStyle(COLORS.brassDark, 1);
+      g.fillRect(x - 36, y + 50, 72, 8);
+      // Stem (thick)
+      g.fillStyle(0x2d6a4f, 1);
+      g.fillRect(x - 6, y - 30, 12, 80);
+      // Leaves (chunky)
+      g.fillStyle(0x7fb069, 1);
+      g.fillRect(x - 40, y - 10, 30, 14);
+      g.fillRect(x + 10, y, 30, 14);
+      g.fillRect(x - 30, y - 50, 24, 14);
+      g.fillRect(x + 6, y - 60, 28, 14);
+      // Glowing flower
+      g.fillStyle(0xf4a261, 1);
+      g.fillRect(x - 14, y - 90, 28, 14);
+      g.fillRect(x - 8, y - 96, 16, 6);
+      // Halo around flower
+      g.fillStyle(0xf4a261, 0.35);
+      g.fillRect(x - 28, y - 100, 56, 36);
+    } else {
+      // LÉO — engineer: a circuit board with LED
+      // Board background
+      g.fillStyle(0x2a4f3e, 1);
+      g.fillRect(x - 80, y - 60, 160, 130);
+      // Circuit traces
+      g.fillStyle(COLORS.brass, 1);
+      g.fillRect(x - 70, y - 30, 80, 6);
+      g.fillRect(x + 10, y - 30, 6, 60);
+      g.fillRect(x - 50, y + 10, 60, 6);
+      g.fillRect(x - 70, y + 10, 6, 30);
+      // Components
+      g.fillStyle(0x7b2d26, 1);
+      g.fillRect(x - 60, y - 40, 16, 16);
+      g.fillStyle(0x1a3a40, 1);
+      g.fillRect(x - 30, y - 40, 16, 16);
+      g.fillStyle(0x2a2620, 1);
+      g.fillRect(x - 30, y - 5, 24, 16);
+      // Big amber LED
+      g.fillStyle(COLORS.sunAmber, 1);
+      g.fillRect(x + 30, y + 30, 28, 28);
+      g.fillStyle(0xf4e9d8, 1);
+      g.fillRect(x + 38, y + 38, 12, 12);
+      // Glow
+      g.fillStyle(COLORS.sunAmber, 0.4);
+      g.fillRect(x + 22, y + 22, 44, 44);
+      // Wrench in corner (top-left)
+      g.fillStyle(COLORS.brass, 1);
+      g.fillRect(x - 70, y - 100, 14, 36);
+      g.fillRect(x - 76, y - 110, 26, 14);
     }
-    // Eyes
-    g.fillStyle(0x1a1a1a, 1);
-    g.fillRect(x - 24, y - 50, 8, 8);
-    g.fillRect(x + 16, y - 50, 8, 8);
-    // KORA badge on chest
-    g.fillStyle(COLORS.sunAmber, 1);
-    g.fillRect(x - 14, y + 30, 28, 12);
+
+    // Name label below the icon
+    const label = profile.gender === 'f' ? 'BIO' : 'ENG';
+    this.add.rectangle(x, y + 110, 80, 20, COLORS.sunAmber, 1)
+      .setStrokeStyle(2, COLORS.cream).setDepth(16);
+    this.add.text(x, y + 110, label, {
+      fontFamily: FONTS.mono,
+      fontSize: '14px',
+      color: COLORS.hex.charDeep,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(17);
   }
 
   private choose(profile: CharacterProfile): void {
