@@ -311,24 +311,28 @@ export class Ch4Coupole extends PuzzleSceneBase {
   }
 
   private makeChoiceButton(x: number, y: number, label: string, onTap: () => void): Phaser.GameObjects.Container {
-    const c = this.add.container(x, y);
-    const bg = this.add.rectangle(0, 0, 800, 110, COLORS.brassDark, 0.95);
+    // Note: x, y are LOCAL to this.choiceContainer (which is at GAME_WIDTH/2, GAME_HEIGHT/2).
+    // We need WORLD coords for the bg.
+    const wx = GAME_WIDTH / 2 + x;
+    const wy = GAME_HEIGHT / 2 + y;
+    const bg = this.add.rectangle(wx, wy, 800, 110, COLORS.brassDark, 0.95);
     bg.setStrokeStyle(2, COLORS.brass, 1);
-    const txt = this.add.text(0, 0, label, {
+    bg.setDepth(7100);
+    bg.setInteractive({ useHandCursor: true });
+    this.add.text(wx, wy, label, {
       fontFamily: FONTS.body,
       fontSize: '30px',
       color: COLORS.hex.cream,
       align: 'center',
       wordWrap: { width: 760 },
-    }).setOrigin(0.5);
-    c.add([bg, txt]);
-    c.setSize(800, 110);
-    c.setInteractive(new Phaser.Geom.Rectangle(-400, -55, 800, 110), Phaser.Geom.Rectangle.Contains);
-    c.on('pointerdown', () => {
+    }).setOrigin(0.5).setDepth(7101);
+    bg.on('pointerdown', () => {
       playSfx('tap');
-      this.tweens.add({ targets: c, scale: { from: 1, to: 0.96 }, duration: 80, yoyo: true, onComplete: onTap });
+      bg.setFillStyle(COLORS.sunAmber, 1);
+      this.time.delayedCall(120, () => onTap());
     });
-    return c;
+    // Return empty container for backward-compat (caller adds to choiceContainer for cleanup)
+    return this.add.container(0, 0);
   }
 
   private endGame(ending: 'return' | 'stay'): void {

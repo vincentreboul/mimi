@@ -67,20 +67,19 @@ export class EpilogueScene extends Phaser.Scene {
 
     // Tap to return to menu
     this.time.delayedCall(6000, () => {
-      const restartBtn = this.add.container(width / 2, height - 100);
-      const bg = this.add.rectangle(0, 0, 400, 80, COLORS.brassDark, 0.9);
+      const bX = width / 2;
+      const bY = height - 100;
+      const bg = this.add.rectangle(bX, bY, 400, 80, COLORS.brassDark, 0.9);
       bg.setStrokeStyle(2, COLORS.brass);
-      const t2 = this.add.text(0, 0, 'Menu', {
+      bg.setAlpha(0);
+      bg.setInteractive({ useHandCursor: true });
+      const t2 = this.add.text(bX, bY, 'Menu', {
         fontFamily: FONTS.body,
         fontSize: '32px',
         color: COLORS.hex.cream,
-      }).setOrigin(0.5);
-      restartBtn.add([bg, t2]);
-      restartBtn.setSize(400, 80);
-      restartBtn.setInteractive(new Phaser.Geom.Rectangle(-200, -40, 400, 80), Phaser.Geom.Rectangle.Contains);
-      restartBtn.setAlpha(0);
-      this.tweens.add({ targets: restartBtn, alpha: 1, duration: 600 });
-      restartBtn.on('pointerdown', () => {
+      }).setOrigin(0.5).setAlpha(0);
+      this.tweens.add({ targets: [bg, t2], alpha: 1, duration: 600 });
+      bg.on('pointerdown', () => {
         this.cameras.main.fadeOut(400, 31, 77, 62);
         this.cameras.main.once('camerafadeoutcomplete', () => {
           this.scene.start('MenuScene');
