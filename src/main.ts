@@ -11,6 +11,8 @@ import { Ch1Cryo } from './scenes/puzzles/Ch1Cryo';
 import { Ch2Serre } from './scenes/puzzles/Ch2Serre';
 import { Ch3Atelier } from './scenes/puzzles/Ch3Atelier';
 import { Ch4Coupole } from './scenes/puzzles/Ch4Coupole';
+import { Ch5Archive } from './scenes/Ch5Archive';
+import { EndingScene } from './scenes/EndingScene';
 import { EpilogueScene } from './scenes/EpilogueScene';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -48,6 +50,8 @@ const config: Phaser.Types.Core.GameConfig = {
     Ch2Serre,
     Ch3Atelier,
     Ch4Coupole,
+    Ch5Archive,
+    EndingScene,
     EpilogueScene,
   ],
 };

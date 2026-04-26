@@ -1,20 +1,32 @@
 import * as Phaser from 'phaser';
 import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { t } from '../systems/narrative';
-import { resetSave } from '../systems/save';
+import { resetSave, type Ending } from '../systems/save';
+
+// Legacy keys still used by Ch4Coupole's two-button "return | stay" choice.
+type LegacyEnding = 'return' | 'stay';
+const NEW_ENDINGS: ReadonlyArray<Ending> = ['evasion', 'rester', 'ascension', 'archive'];
 
 export class EpilogueScene extends Phaser.Scene {
-  private endingKey: 'return' | 'stay' = 'return';
+  private endingKey: LegacyEnding = 'return';
+  private redirected = false;
 
   constructor() {
     super('EpilogueScene');
   }
 
-  init(data: { ending?: 'return' | 'stay' }): void {
-    this.endingKey = data?.ending ?? 'return';
+  init(data: { ending?: LegacyEnding | Ending }): void {
+    // If caller provided one of the new v2 endings, redirect immediately.
+    if (data?.ending && (NEW_ENDINGS as readonly string[]).includes(data.ending)) {
+      this.redirected = true;
+      this.scene.start('EndingScene', { ending: data.ending });
+      return;
+    }
+    this.endingKey = (data?.ending as LegacyEnding) ?? 'return';
   }
 
   create(): void {
+    if (this.redirected) return;
     this.cameras.main.fadeIn(800, 31, 77, 62);
     const { width, height } = this.scale.gameSize;
 
