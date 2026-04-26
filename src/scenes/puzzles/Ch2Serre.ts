@@ -24,6 +24,8 @@ export class Ch2Serre extends PuzzleSceneBase {
     this.composeBackground();
     this.setupHud(PUZZLE_IDS.ch2Fert);
     this.makeHotspots();
+    this.spawnPollen();
+    this.spawnLumiraGlow();
 
     if (!hasProgress('ch2.vera_greeted')) {
       this.time.delayedCall(700, () => {
@@ -197,6 +199,50 @@ export class Ch2Serre extends PuzzleSceneBase {
         this.recordTap();
         this.showVera('Que veux-tu savoir, {name} ?');
       },
+    });
+  }
+
+  private spawnPollen(): void {
+    // Floating green/amber pollen particles in the greenhouse
+    for (let i = 0; i < 28; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const y = 200 + Math.random() * (STAGE_BOTTOM_Y - 300);
+      const size = 6 + Math.random() * 8;
+      const isAmber = Math.random() > 0.7;
+      const color = isAmber ? 0xf4a261 : 0x7fb069;
+      const dot = this.add.rectangle(x, y, size, size, color, 0.85).setDepth(15);
+      dot.setStrokeStyle(2, 0xf4e9d8, 0.9);
+      const driftY = -40 - Math.random() * 100;
+      const driftX = (Math.random() - 0.5) * 80;
+      this.tweens.add({
+        targets: dot,
+        y: y + driftY,
+        x: x + driftX,
+        alpha: { from: 0.85, to: 0.2 },
+        duration: 6000 + Math.random() * 4000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 3000,
+      });
+    }
+  }
+
+  private spawnLumiraGlow(): void {
+    // Pulsing amber halo around the Lumira (already has a static glow — add tween)
+    const halo = this.add.graphics();
+    halo.setDepth(7);
+    halo.fillStyle(0xf4a261, 0.45);
+    halo.fillCircle(GAME_WIDTH / 2, STAGE_BOTTOM_Y - 200, 240);
+    halo.fillStyle(0xf4a261, 0.25);
+    halo.fillCircle(GAME_WIDTH / 2, STAGE_BOTTOM_Y - 200, 380);
+    this.tweens.add({
+      targets: halo,
+      alpha: { from: 0.6, to: 1 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
     });
   }
 

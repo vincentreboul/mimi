@@ -35,6 +35,8 @@ export class Ch3Atelier extends PuzzleSceneBase {
     this.setupHud(PUZZLE_IDS.ch3Circuit);
     this.makeCircuitBoard(GAME_WIDTH / 2, STAGE_BOTTOM_Y - 280);
     this.makeHotspots();
+    this.spawnSparks();
+    this.spawnLampGlow();
 
     if (!hasProgress('ch3.vera_greeted')) {
       this.time.delayedCall(700, () => {
@@ -97,6 +99,56 @@ export class Ch3Atelier extends PuzzleSceneBase {
       color: COLORS.hex.brass,
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(50);
+  }
+
+  private spawnSparks(): void {
+    // Occasional sparks from the workbench / pipes
+    const spawnBurst = () => {
+      const cx = 200 + Math.random() * 200;
+      const cy = STAGE_BOTTOM_Y - 200 - Math.random() * 200;
+      for (let i = 0; i < 6; i++) {
+        const sparkX = cx + (Math.random() - 0.5) * 20;
+        const sparkY = cy + (Math.random() - 0.5) * 20;
+        const sp = this.add.rectangle(sparkX, sparkY, 6, 6, 0xf4a261, 1).setDepth(20);
+        const dx = (Math.random() - 0.5) * 80;
+        const dy = -40 - Math.random() * 80;
+        this.tweens.add({
+          targets: sp,
+          x: sparkX + dx,
+          y: sparkY + dy,
+          alpha: { from: 1, to: 0 },
+          duration: 600 + Math.random() * 400,
+          ease: 'Cubic.easeOut',
+          onComplete: () => sp.destroy(),
+        });
+      }
+    };
+    // Recurring sparks every 2-4 seconds
+    const sparkLoop = () => {
+      spawnBurst();
+      this.time.delayedCall(2000 + Math.random() * 2000, sparkLoop);
+    };
+    this.time.delayedCall(1500, sparkLoop);
+  }
+
+  private spawnLampGlow(): void {
+    // Big amber halo around the central lamp
+    const lampX = GAME_WIDTH / 2;
+    const lampY = HUD.topBarHeight + 200;
+    const halo = this.add.graphics();
+    halo.setDepth(3);
+    halo.fillStyle(0xf4a261, 0.35);
+    halo.fillCircle(lampX, lampY, 280);
+    halo.fillStyle(0xf4a261, 0.18);
+    halo.fillCircle(lampX, lampY, 460);
+    this.tweens.add({
+      targets: halo,
+      alpha: { from: 0.7, to: 1 },
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   private shortName(id: ItemId): string {

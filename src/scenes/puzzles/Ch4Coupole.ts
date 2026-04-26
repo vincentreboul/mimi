@@ -32,6 +32,8 @@ export class Ch4Coupole extends PuzzleSceneBase {
     this.setupHud(PUZZLE_IDS.ch4Crystals);
     this.makeTelescope(GAME_WIDTH / 2, STAGE_BOTTOM_Y - 280);
     this.makeHotspots();
+    this.spawnTwinklingStars();
+    this.spawnEarthGlow();
 
     if (!hasProgress('ch4.vera_greeted')) {
       this.time.delayedCall(800, () => {
@@ -111,6 +113,46 @@ export class Ch4Coupole extends PuzzleSceneBase {
       color: COLORS.hex.cream,
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(50);
+  }
+
+  private spawnTwinklingStars(): void {
+    // Bright twinkling stars (in addition to the static ones in background)
+    for (let i = 0; i < 18; i++) {
+      const x = Math.random() * GAME_WIDTH;
+      const y = HUD.topBarHeight + Math.random() * 800;
+      const size = 5 + Math.random() * 5;
+      const star = this.add.rectangle(x, y, size, size, 0xf4e9d8, 1).setDepth(20);
+      this.tweens.add({
+        targets: star,
+        alpha: { from: 0.3, to: 1 },
+        scale: { from: 0.6, to: 1.4 },
+        duration: 1200 + Math.random() * 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 2000,
+      });
+    }
+  }
+
+  private spawnEarthGlow(): void {
+    // Slow pulsing halo around Earth
+    const ex = GAME_WIDTH / 2;
+    const ey = HUD.topBarHeight + 380;
+    const halo = this.add.graphics();
+    halo.setDepth(-700);
+    halo.fillStyle(0xa8dadc, 0.25);
+    halo.fillCircle(ex, ey, 380);
+    halo.fillStyle(0xa8dadc, 0.12);
+    halo.fillCircle(ex, ey, 480);
+    this.tweens.add({
+      targets: halo,
+      alpha: { from: 0.7, to: 1 },
+      duration: 3500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   private makeTelescope(cx: number, cy: number): void {
