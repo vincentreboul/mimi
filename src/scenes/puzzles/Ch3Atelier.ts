@@ -173,23 +173,19 @@ export class Ch3Atelier extends PuzzleSceneBase {
     slotPositions.forEach((dx, i) => {
       const sx = cx + dx;
       const sy = cy;
-      const slotContainer = this.add.container(sx, sy);
-
-      const slotBg = this.add.rectangle(0, 0, 130, 130, COLORS.charDeep, 0.85);
+      // Slot bg is the interactive directly (no Container offset)
+      const slotBg = this.add.rectangle(sx, sy, 130, 130, COLORS.charDeep, 0.85);
       slotBg.setStrokeStyle(3, COLORS.brassDark, 1);
-      slotContainer.add(slotBg);
+      slotBg.setDepth(20);
+      slotBg.setInteractive({ useHandCursor: true });
 
-      const slotName = this.add.text(0, 0, '+', {
+      const slotName = this.add.text(sx, sy, '+', {
         fontFamily: FONTS.body,
         fontSize: '64px',
         color: COLORS.hex.brass,
-      }).setOrigin(0.5);
-      slotContainer.add(slotName);
+      }).setOrigin(0.5).setDepth(21);
 
-      slotContainer.setSize(130, 130);
-      slotContainer.setInteractive(new Phaser.Geom.Rectangle(-65, -65, 130, 130), Phaser.Geom.Rectangle.Contains);
-      slotContainer.on('pointerdown', () => this.onSlotTap(i));
-      slotContainer.setDepth(20);
+      slotBg.on('pointerdown', () => this.onSlotTap(i));
 
       this.add.text(sx, sy + 95, `${i + 1}`, {
         fontFamily: FONTS.mono,
@@ -197,25 +193,30 @@ export class Ch3Atelier extends PuzzleSceneBase {
         color: COLORS.hex.brass,
       }).setOrigin(0.5).setDepth(20);
 
+      // Backward-compat empty container (slot ref used by other code)
+      const slotContainer = this.add.container(0, 0);
       this.circuitSlots.push({ container: slotContainer, placedItem: null, name: slotName });
     });
 
-    // Validate button — make BIG
+    // Validate button — Rectangle direct interactive
     const btnY = cy + 200;
-    this.validateBtn = this.add.container(cx, btnY);
-    const vBg = this.add.rectangle(0, 0, 380, 100, COLORS.brassDark, 0.95);
+    const vX = cx;
+    const vBg = this.add.rectangle(vX, btnY, 380, 100, COLORS.brassDark, 0.95);
     vBg.setStrokeStyle(3, COLORS.brass, 1);
-    const vTxt = this.add.text(0, 0, 'TESTER', {
+    vBg.setDepth(20);
+    vBg.setInteractive({ useHandCursor: true });
+    this.add.text(vX, btnY, 'TESTER', {
       fontFamily: FONTS.mono,
       fontSize: '36px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.validateBtn.add([vBg, vTxt]);
-    this.validateBtn.setSize(380, 100);
-    this.validateBtn.setInteractive(new Phaser.Geom.Rectangle(-190, -50, 380, 100), Phaser.Geom.Rectangle.Contains);
-    this.validateBtn.setDepth(20);
-    this.validateBtn.on('pointerdown', () => this.validateCircuit());
+    }).setOrigin(0.5).setDepth(21);
+    vBg.on('pointerdown', () => {
+      vBg.setFillStyle(COLORS.sunAmber, 1);
+      this.time.delayedCall(120, () => vBg.setFillStyle(COLORS.brassDark, 0.95));
+      this.validateCircuit();
+    });
+    this.validateBtn = this.add.container(0, 0); // backward-compat
   }
 
   private onSlotTap(slotIdx: number): void {

@@ -49,8 +49,10 @@ export class InventoryBar extends Phaser.GameObjects.Container {
     const slot = scene.add.container(x, y);
     const size = HUD.inventorySlotSize;
 
+    // Bg is the interactive — at SLOT-LOCAL coords but interactive uses world bounds
     const bg = scene.add.rectangle(0, 0, size, size, COLORS.leafDeep, 0.95);
     bg.setStrokeStyle(3, COLORS.brassDark, 0.8);
+    bg.setInteractive({ useHandCursor: true });
     slot.add(bg);
 
     // Pixel-art icon container — populated by drawItemIcon when item is set
@@ -66,18 +68,12 @@ export class InventoryBar extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
     slot.add(name);
 
-    slot.setSize(size, size);
-    slot.setInteractive(
-      new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size),
-      Phaser.Geom.Rectangle.Contains
-    );
-
     (slot as any).bg = bg;
     (slot as any).iconContainer = iconContainer;
     (slot as any).name = name;
     (slot as any).itemId = null as ItemId | null;
 
-    slot.on('pointerdown', () => this.onSlotTap(slot));
+    bg.on('pointerdown', () => this.onSlotTap(slot));
 
     return slot;
   }

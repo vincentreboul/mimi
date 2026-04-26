@@ -167,53 +167,57 @@ export class Ch4Coupole extends PuzzleSceneBase {
     g.fillCircle(cx + 200, cy, 38);
 
     // Two crystal slots
-    const leftSlotC = this.add.container(cx - 80, cy);
-    const lBg = this.add.rectangle(0, 0, 120, 120, COLORS.leafDeep, 0.95);
+    // Left crystal slot — Rectangle direct interactive
+    const lX = cx - 80;
+    const lBg = this.add.rectangle(lX, cy, 120, 120, COLORS.leafDeep, 0.95);
     lBg.setStrokeStyle(3, COLORS.brassDark, 1);
-    const lName = this.add.text(0, 0, '◇', {
+    lBg.setDepth(20);
+    lBg.setInteractive({ useHandCursor: true });
+    const lName = this.add.text(lX, cy, '◇', {
       fontFamily: FONTS.body,
       fontSize: '64px',
       color: COLORS.hex.brass,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(21);
     lName.setAlpha(0.4);
-    leftSlotC.add([lBg, lName]);
-    leftSlotC.setSize(120, 120);
-    leftSlotC.setInteractive(new Phaser.Geom.Rectangle(-60, -60, 120, 120), Phaser.Geom.Rectangle.Contains);
-    leftSlotC.setDepth(20);
-    leftSlotC.on('pointerdown', () => this.onSlotTap('left'));
-    this.leftSlot = { container: leftSlotC, placed: null, name: lName };
+    lBg.on('pointerdown', () => this.onSlotTap('left'));
+    this.leftSlot = { container: this.add.container(0, 0), placed: null, name: lName };
 
-    const rightSlotC = this.add.container(cx + 80, cy);
-    const rBg = this.add.rectangle(0, 0, 120, 120, COLORS.leafDeep, 0.95);
+    // Right crystal slot — Rectangle direct interactive
+    const rX = cx + 80;
+    const rBg = this.add.rectangle(rX, cy, 120, 120, COLORS.leafDeep, 0.95);
     rBg.setStrokeStyle(3, COLORS.brassDark, 1);
-    const rName = this.add.text(0, 0, '◈', {
+    rBg.setDepth(20);
+    rBg.setInteractive({ useHandCursor: true });
+    const rName = this.add.text(rX, cy, '◈', {
       fontFamily: FONTS.body,
       fontSize: '64px',
       color: COLORS.hex.brass,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(21);
     rName.setAlpha(0.4);
-    rightSlotC.add([rBg, rName]);
-    rightSlotC.setSize(120, 120);
-    rightSlotC.setInteractive(new Phaser.Geom.Rectangle(-60, -60, 120, 120), Phaser.Geom.Rectangle.Contains);
-    rightSlotC.setDepth(20);
-    rightSlotC.on('pointerdown', () => this.onSlotTap('right'));
-    this.rightSlot = { container: rightSlotC, placed: null, name: rName };
+    rBg.on('pointerdown', () => this.onSlotTap('right'));
+    this.rightSlot = { container: this.add.container(0, 0), placed: null, name: rName };
 
-    // Align button
-    this.alignBtn = this.add.container(cx, cy + 130);
-    const aBg = this.add.rectangle(0, 0, 320, 90, COLORS.brassDark, 0.95);
+    // Align button — Rectangle direct interactive
+    const aY = cy + 130;
+    const aBg = this.add.rectangle(cx, aY, 320, 90, COLORS.brassDark, 0.95);
     aBg.setStrokeStyle(3, COLORS.brass, 1);
-    const aTxt = this.add.text(0, 0, 'ALIGNER', {
+    aBg.setDepth(20);
+    aBg.setInteractive({ useHandCursor: true });
+    const aTxt = this.add.text(cx, aY, 'ALIGNER', {
       fontFamily: FONTS.mono,
       fontSize: '36px',
       color: COLORS.hex.cream,
       fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.alignBtn.add([aBg, aTxt]);
-    this.alignBtn.setSize(320, 90);
-    this.alignBtn.setInteractive(new Phaser.Geom.Rectangle(-160, -45, 320, 90), Phaser.Geom.Rectangle.Contains);
-    this.alignBtn.setDepth(20);
-    this.alignBtn.on('pointerdown', () => this.tryAlign());
+    }).setOrigin(0.5).setDepth(21);
+    aBg.on('pointerdown', () => {
+      aBg.setFillStyle(COLORS.sunAmber, 1);
+      this.time.delayedCall(120, () => aBg.setFillStyle(COLORS.brassDark, 0.95));
+      this.tryAlign();
+    });
+    this.alignBtn = this.add.container(0, 0); // backward-compat
+    // Store the text ref so tryAlign can change it on success
+    (this.alignBtn as any).bgRef = aBg;
+    (this.alignBtn as any).txtRef = aTxt;
   }
 
   private onSlotTap(side: 'left' | 'right'): void {
@@ -256,10 +260,11 @@ export class Ch4Coupole extends PuzzleSceneBase {
       playSfx('success');
       this.telescopeAligned = true;
       setProgress('ch4.solved');
-      this.alignBtn?.disableInteractive();
-      const aTxt = this.alignBtn?.getAt(1) as Phaser.GameObjects.Text;
-      aTxt.setText('ALIGNÉ ✓');
-      aTxt.setColor(COLORS.hex.sunAmber);
+      const aBg = (this.alignBtn as any).bgRef as Phaser.GameObjects.Rectangle;
+      const aTxt = (this.alignBtn as any).txtRef as Phaser.GameObjects.Text;
+      aBg?.disableInteractive();
+      aTxt?.setText('ALIGNÉ ✓');
+      aTxt?.setColor(COLORS.hex.sunAmber);
       this.showVera(t('vera.ch4.task_done'), () => {
         this.showVera(t('vera.ch4.truth'), () => {
           this.showFinalChoice();
