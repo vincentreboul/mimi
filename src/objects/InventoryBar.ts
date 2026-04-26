@@ -52,19 +52,20 @@ export class InventoryBar extends Phaser.GameObjects.Container {
     bg.setStrokeStyle(3, COLORS.brassDark, 0.8);
     slot.add(bg);
 
-    const icon = scene.add.text(0, -22, '', {
-      fontFamily: FONTS.body,
-      fontSize: '64px',
-      color: COLORS.hex.cream,
+    const icon = scene.add.text(0, -10, '', {
+      fontFamily: FONTS.display,
+      fontSize: '52px',
+      color: COLORS.hex.sunAmber,
+      fontStyle: 'bold',
     }).setOrigin(0.5);
     slot.add(icon);
 
-    const name = scene.add.text(0, 50, '', {
+    const name = scene.add.text(0, 38, '', {
       fontFamily: FONTS.body,
-      fontSize: '20px',
+      fontSize: '18px',
       color: COLORS.hex.cream,
       align: 'center',
-      wordWrap: { width: size - 8 },
+      wordWrap: { width: size - 4 },
     }).setOrigin(0.5);
     slot.add(name);
 

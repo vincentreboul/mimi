@@ -25,8 +25,10 @@ export class DialogueBox extends Phaser.GameObjects.Container {
   private isComplete = false;
 
   constructor(scene: Phaser.Scene) {
-    // Position the dialog low on the scene area so it doesn't cover artwork
-    const yCenter = GAME_HEIGHT - 920;
+    // Position the dialog at the BOTTOM of the scene area, just above the HUD.
+    // BOX_HEIGHT=360, HUD bottom starts ~ GAME_HEIGHT - 440. So box bottom should
+    // be just above STAGE_BOTTOM_Y (~1480) → center Y = 1480 - 180 - 10 = 1290.
+    const yCenter = 1290;
     super(scene, GAME_WIDTH / 2, yCenter);
 
     this.bg = scene.add.rectangle(0, 0, GAME_WIDTH - 64, BOX_HEIGHT, COLORS.charDeep, 0.92);
@@ -52,8 +54,9 @@ export class DialogueBox extends Phaser.GameObjects.Container {
 
     this.hint = scene.add.text(0, BOX_HEIGHT / 2 - 36, '▼ TAPE POUR CONTINUER ▼', {
       fontFamily: FONTS.mono,
-      fontSize: '26px',
+      fontSize: '34px',
       color: COLORS.hex.skyPale,
+      fontStyle: 'bold',
     }).setOrigin(0.5);
     this.hint.setAlpha(0);
     this.add(this.hint);

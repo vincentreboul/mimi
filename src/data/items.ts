@@ -42,9 +42,9 @@ export const ITEMS: Record<ItemId, ItemMeta> = {
   // === Chapter 1 ===
   bracelet: {
     id: 'bracelet',
-    name: 'Bracelet de Léa',
-    desc: 'Le bracelet de ta mère. Tu te souviens qu\'elle ne le quittait jamais. Une date est gravée à l\'intérieur : 14.03.78.',
-    icon: '⊙',
+    name: 'Montre cassée',
+    desc: 'Une montre dont les aiguilles sont gelées. Cadeau d\'embarquement, peut-être.',
+    icon: '◷',
   },
   badge: {
     id: 'badge',
@@ -60,14 +60,14 @@ export const ITEMS: Record<ItemId, ItemMeta> = {
   },
   cryo_schema: {
     id: 'cryo_schema',
-    name: 'Schéma cryo',
-    desc: 'Plan technique des cryo-pods. La séquence d\'ouverture nécessite un code 4 chiffres.',
-    icon: '◎',
+    name: 'Cadre photo',
+    desc: 'Cadre en laiton. À l\'intérieur, l\'équipe au premier jour. Au dos : "14.03.2064".',
+    icon: '▭',
   },
   cryo_key: {
     id: 'cryo_key',
-    name: 'Clé d\'accès Serre',
-    desc: 'Délivrée par le terminal cryo. Cylindre métallique chaud au toucher.',
+    name: 'Clé Serre',
+    desc: 'Cylindre métallique chaud au toucher. Délivré par le terminal cryo.',
     icon: '⚷',
   },
 

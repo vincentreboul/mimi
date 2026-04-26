@@ -35,7 +35,6 @@ export class PrecisionButton extends Phaser.GameObjects.Container {
   private bg: Phaser.GameObjects.Rectangle;
   private txt: Phaser.GameObjects.Text;
   private opts: PrecisionButtonOptions;
-  private isPressed = false;
   private origFillColor: number;
 
   constructor(scene: Phaser.Scene, opts: PrecisionButtonOptions) {
@@ -66,35 +65,19 @@ export class PrecisionButton extends Phaser.GameObjects.Container {
       Phaser.Geom.Rectangle.Contains
     );
 
-    // pointerdown: visual press feedback, mark pressed
+    // Fire on pointerdown for instant response (iOS finger taps move slightly,
+    // requiring pointerup-on-same-target makes legit taps feel sluggish/missed).
+    // Adjacency confusion is prevented by zero hit-area overlap above.
     this.on('pointerdown', () => {
-      this.isPressed = true;
       this.bg.setFillStyle(COLORS.sunAmber, 1);
-    });
-
-    // pointerup: only fire onTap if release happens INSIDE the hit area
-    // (i.e., not after a drag-off). This is the laser-precision pattern.
-    this.on('pointerup', () => {
-      if (this.isPressed) {
-        this.isPressed = false;
-        this.bg.setFillStyle(this.origFillColor, 0.95);
-        playSfx('tap');
-        opts.onTap();
-      }
-    });
-
-    // pointerout/upoutside: cancel if drag-off
-    this.on('pointerout', () => {
-      if (this.isPressed) {
-        this.isPressed = false;
-        this.bg.setFillStyle(this.origFillColor, 0.95);
-      }
-    });
-    this.on('pointerupoutside', () => {
-      if (this.isPressed) {
-        this.isPressed = false;
-        this.bg.setFillStyle(this.origFillColor, 0.95);
-      }
+      playSfx('tap');
+      opts.onTap();
+      // Revert color shortly after for visual press feedback
+      scene.time.delayedCall(140, () => {
+        if (!this._selectedState) {
+          this.bg.setFillStyle(this.origFillColor, 0.95);
+        }
+      });
     });
 
     if (opts.selected) this.markSelected(true);
@@ -102,7 +85,10 @@ export class PrecisionButton extends Phaser.GameObjects.Container {
     scene.add.existing(this);
   }
 
+  private _selectedState = false;
+
   markSelected(selected: boolean): void {
+    this._selectedState = selected;
     if (selected) {
       this.origFillColor = COLORS.sunAmber;
       this.bg.setFillStyle(COLORS.sunAmber, 1);

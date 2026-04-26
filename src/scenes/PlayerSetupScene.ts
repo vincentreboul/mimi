@@ -138,12 +138,12 @@ export class PlayerSetupScene extends Phaser.Scene {
       lineSpacing: 6,
     }).setOrigin(0, 0.5).setDepth(20);
 
-    // "JOUER" badge bottom-right of card
-    this.add.rectangle(cx + w / 2 - 110, cy + h / 2 - 60, 180, 64, COLORS.sunAmber, 1)
-      .setStrokeStyle(3, COLORS.cream).setDepth(20);
-    this.add.text(cx + w / 2 - 110, cy + h / 2 - 60, '▶ JOUER', {
+    // "JOUER" badge bottom-center of card — BIG and tappable
+    this.add.rectangle(cx, cy + h / 2 - 60, 360, 96, COLORS.sunAmber, 1)
+      .setStrokeStyle(4, COLORS.cream).setDepth(20);
+    this.add.text(cx, cy + h / 2 - 60, '▶  JOUER', {
       fontFamily: FONTS.body,
-      fontSize: '32px',
+      fontSize: '48px',
       color: COLORS.hex.charDeep,
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(21);
