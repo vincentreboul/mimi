@@ -317,6 +317,16 @@ export function addEnding(e: Ending): void {
   }
 }
 
+/** Mark NG+ as unlocked on the active slot (so MenuScene can show the NG+ entry). */
+export function unlockNGPlus(): void {
+  const slot = getActiveSlot();
+  if (!slot.ngPlus.unlocked) {
+    slot.ngPlus.unlocked = true;
+    touchSlot(slot);
+    persist(loadRoot());
+  }
+}
+
 export function addAchievement(id: string): void {
   const slot = getActiveSlot();
   if (!slot.achievements.includes(id)) {

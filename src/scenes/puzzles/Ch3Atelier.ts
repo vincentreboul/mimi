@@ -10,8 +10,17 @@ import { t } from '../../systems/narrative';
 import { ITEMS, type ItemId } from '../../data/items';
 import { playSfx } from '../../systems/audio';
 import { CH3_SPRITES } from '../../data/assets';
+import { isCollected } from '../../systems/fragments';
 
 const CIRCUIT_COMPONENTS: ItemId[] = ['comp_resistor', 'comp_capa', 'comp_diode', 'comp_led'];
+
+// Map of which fragment to collect when an item is first picked.
+const PICK_FRAGMENT_MAP: Partial<Record<ItemId, string>> = {
+  tournevis: 'ch3.blueprint',
+  comp_resistor: 'ch3.radio_tome',
+  comp_capa: 'ch3.radio_vesper',
+  comp_diode: 'ch3.radio_han',
+};
 
 export class Ch3Atelier extends PuzzleSceneBase {
   private circuitSlots: Array<{
@@ -20,6 +29,8 @@ export class Ch3Atelier extends PuzzleSceneBase {
     name: Phaser.GameObjects.Text;
   }> = [];
   private validateBtn?: Phaser.GameObjects.Container;
+  private hullPatchHotspot?: Hotspot;
+  private hiddenCompartmentHotspot?: Hotspot;
 
   constructor() {
     super('Ch3Atelier');
@@ -43,11 +54,28 @@ export class Ch3Atelier extends PuzzleSceneBase {
     if (!hasProgress('ch3.vera_greeted')) {
       this.time.delayedCall(700, () => {
         this.showVeraSequence(
-          [t('vera.ch3.greeting'), t('vera.ch3.uneasy'), t('vera.ch3.task')],
+          [
+            'Bienvenue dans l\'atelier d\'IOLAS. Je préfère cet espace. Il est plein d\'objets qui ont une mémoire.',
+            t('vera.ch3.uneasy'),
+            t('vera.ch3.task'),
+          ],
           () => setProgress('ch3.vera_greeted')
         );
       });
     }
+  }
+
+  /**
+   * Wraps addItem to also collect a fragment the first time the item is picked.
+   * Returns whether the item was newly added to the inventory.
+   */
+  private addItemWithFragment(id: ItemId): boolean {
+    const wasNew = addItem(id);
+    if (wasNew) {
+      const fragId = PICK_FRAGMENT_MAP[id];
+      if (fragId) this.collectFragment(fragId);
+    }
+    return wasNew;
   }
 
   private composeBackground(): void {
@@ -94,6 +122,12 @@ export class Ch3Atelier extends PuzzleSceneBase {
     // Lamp center
     PixelScene.place(this, 'lamp1', GAME_WIDTH / 2, HUD.topBarHeight + 90, 6, { origin: { x: 0.5, y: 0 }, depth: 4 });
 
+    // Hull breach panel — visible crack on the back wall (centered upper area)
+    this.drawHullBreach();
+
+    // Hidden compartment panel — visible (but innocuous) panel on back wall
+    this.drawHiddenPanel();
+
     // Title
     this.add.text(GAME_WIDTH / 2, HUD.topBarHeight + 30, 'MODULE C — ATELIER', {
       fontFamily: FONTS.mono,
@@ -101,6 +135,43 @@ export class Ch3Atelier extends PuzzleSceneBase {
       color: COLORS.hex.brass,
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(50);
+  }
+
+  private drawHullBreach(): void {
+    // Draw a visible crack on the upper-right portion of the wall
+    const cx = GAME_WIDTH / 2 + 220;
+    const cy = HUD.topBarHeight + 240;
+    const g = this.add.graphics();
+    g.setDepth(6);
+    g.lineStyle(3, 0x000000, 0.85);
+    g.beginPath();
+    g.moveTo(cx - 50, cy - 30);
+    g.lineTo(cx - 20, cy);
+    g.lineTo(cx + 10, cy - 10);
+    g.lineTo(cx + 30, cy + 25);
+    g.lineTo(cx + 60, cy + 15);
+    g.strokePath();
+    // Secondary crack branches
+    g.lineStyle(2, 0x000000, 0.7);
+    g.beginPath();
+    g.moveTo(cx - 20, cy);
+    g.lineTo(cx - 35, cy + 30);
+    g.strokePath();
+  }
+
+  private drawHiddenPanel(): void {
+    // Subtle riveted panel near upper-left back wall
+    const cx = GAME_WIDTH / 2 - 240;
+    const cy = HUD.topBarHeight + 280;
+    const g = this.add.graphics();
+    g.setDepth(6);
+    g.lineStyle(2, 0x000000, 0.5);
+    g.strokeRect(cx - 40, cy - 40, 80, 80);
+    // Rivets
+    g.fillStyle(0x000000, 0.6);
+    [[-30, -30], [30, -30], [-30, 30], [30, 30]].forEach(([dx, dy]) => {
+      g.fillCircle(cx + dx, cy + dy, 3);
+    });
   }
 
   private spawnSparks(): void {
@@ -258,6 +329,8 @@ export class Ch3Atelier extends PuzzleSceneBase {
       playSfx('success');
       addItem('cle_atelier');
       setProgress('ch3.solved');
+      // Carte tachée fragment unlocked when circuit assembled correctly
+      this.collectFragment('ch3.map_stained');
       notifyInventoryChange();
       this.flashLed();
       this.showVera(t('vera.ch3.circuit_right'), () => {
@@ -285,6 +358,7 @@ export class Ch3Atelier extends PuzzleSceneBase {
   }
 
   private makeHotspots(): void {
+    // === Établi (workbench) ===
     new Hotspot(this, {
       x: 220,
       y: STAGE_BOTTOM_Y - 380,
@@ -293,13 +367,20 @@ export class Ch3Atelier extends PuzzleSceneBase {
       name: 'établi',
       onLook: () => {
         this.recordTap();
-        this.showNarration(t('scene.ch3.workbench_look'));
+        // First look hints at hidden hotspot underneath
+        if (!hasProgress('ch3.workbench_looked_once')) {
+          setProgress('ch3.workbench_looked_once');
+          this.showNarration('L\'établi est en désordre. Un coin paraît plus poussiéreux...');
+        } else {
+          this.showNarration(t('scene.ch3.workbench_look'));
+        }
       },
       onPick: () => {
         this.recordTap();
         if (!hasProgress('ch3.components_taken')) {
           this.showNarration(t('scene.ch3.workbench_pick'), () => {
-            CIRCUIT_COMPONENTS.forEach((c) => addItem(c));
+            // First-time pick of these components also collects fragments
+            CIRCUIT_COMPONENTS.forEach((c) => this.addItemWithFragment(c));
             setProgress('ch3.components_taken');
             notifyInventoryChange();
           });
@@ -309,6 +390,30 @@ export class Ch3Atelier extends PuzzleSceneBase {
       },
     });
 
+    // === Voice memo discovery (under workbench) — secret ===
+    // A small hot zone low and slightly off the main bench, requires examining workbench first
+    new Hotspot(this, {
+      x: 280,
+      y: STAGE_BOTTOM_Y - 60,
+      width: 180,
+      height: 90,
+      name: 'sous l\'établi',
+      showIndicator: false,
+      onLook: () => {
+        this.recordTap();
+        this.handleUnderBench();
+      },
+      onUse: () => {
+        this.recordTap();
+        this.handleUnderBench();
+      },
+      onPick: () => {
+        this.recordTap();
+        this.handleUnderBenchPick();
+      },
+    });
+
+    // === Boîte à outils (toolbox) ===
     new Hotspot(this, {
       x: 90,
       y: STAGE_BOTTOM_Y - 180,
@@ -323,7 +428,7 @@ export class Ch3Atelier extends PuzzleSceneBase {
         this.recordTap();
         if (!hasItem('tournevis') && !hasProgress('ch3.tools_taken')) {
           this.showNarration(t('scene.ch3.toolbox_pick'), () => {
-            addItem('tournevis');
+            this.addItemWithFragment('tournevis');
             setProgress('ch3.tools_taken');
             notifyInventoryChange();
           });
@@ -333,6 +438,7 @@ export class Ch3Atelier extends PuzzleSceneBase {
       },
     });
 
+    // === Schéma mural ===
     new Hotspot(this, {
       x: GAME_WIDTH - 220,
       y: HUD.topBarHeight + 480,
@@ -345,6 +451,7 @@ export class Ch3Atelier extends PuzzleSceneBase {
       },
     });
 
+    // === Terminal ===
     new Hotspot(this, {
       x: GAME_WIDTH - 180,
       y: STAGE_BOTTOM_Y - 200,
@@ -357,7 +464,55 @@ export class Ch3Atelier extends PuzzleSceneBase {
       },
     });
 
-    // VERA talk
+    // === Hull breach panel — mini-puzzle ===
+    this.hullPatchHotspot = new Hotspot(this, {
+      x: GAME_WIDTH / 2 + 220,
+      y: HUD.topBarHeight + 240,
+      width: 200,
+      height: 160,
+      name: 'fissure de coque',
+      onLook: () => {
+        this.recordTap();
+        if (hasProgress('ch3.hull_patched')) {
+          this.showNarration('La fissure est colmatée. Travail propre.');
+        } else {
+          this.showNarration('Une fissure dans la coque. Patchable.');
+        }
+      },
+      onUse: () => {
+        this.recordTap();
+        if (hasProgress('ch3.hull_patched')) {
+          this.showNarration('Déjà colmatée.');
+          return;
+        }
+        const selected = this.inv.getSelected();
+        if (selected === 'tournevis') {
+          this.startHullPatchPuzzle();
+        } else {
+          this.showNarration('Il te faut un outil. Le tournevis devrait suffire.');
+        }
+      },
+    });
+
+    // === Hidden compartment panel ===
+    this.hiddenCompartmentHotspot = new Hotspot(this, {
+      x: GAME_WIDTH / 2 - 240,
+      y: HUD.topBarHeight + 280,
+      width: 160,
+      height: 160,
+      name: 'panneau de coque arrière',
+      showIndicator: false,
+      onLook: () => {
+        this.recordTap();
+        this.handleHiddenCompartmentLook();
+      },
+      onUse: () => {
+        this.recordTap();
+        this.handleHiddenCompartmentUse();
+      },
+    });
+
+    // === VERA talk ===
     new Hotspot(this, {
       x: GAME_WIDTH - 100,
       y: 200,
@@ -370,5 +525,290 @@ export class Ch3Atelier extends PuzzleSceneBase {
         this.showVera('Cet endroit me met mal à l\'aise, {name}. Continue.');
       },
     });
+  }
+
+  // === Voice memo flow ===
+
+  private handleUnderBench(): void {
+    if (!hasProgress('ch3.workbench_looked_once')) {
+      // Player hasn't even looked at workbench yet — give a soft nudge
+      this.showNarration('Tu n\'as rien remarqué de particulier ici. Examine d\'abord l\'établi.');
+      return;
+    }
+    if (hasItem('voice_recorder') || isCollected('ch3.voice_memo')) {
+      this.showNarration('Tu as déjà fouillé sous l\'établi.');
+      return;
+    }
+    setProgress('ch3.under_bench_revealed');
+    this.showNarration('Tu trouves un enregistreur vocal sous l\'établi. Le voyant clignote.');
+  }
+
+  private handleUnderBenchPick(): void {
+    if (!hasProgress('ch3.under_bench_revealed')) {
+      this.showNarration('Il n\'y a rien à prendre ici. Pas encore.');
+      return;
+    }
+    if (hasItem('voice_recorder') || isCollected('ch3.voice_memo')) {
+      this.showNarration('Tu as déjà l\'enregistreur.');
+      return;
+    }
+    addItem('voice_recorder');
+    this.collectFragment('ch3.voice_memo');
+    notifyInventoryChange();
+    playSfx('pickup');
+    this.time.delayedCall(900, () => {
+      this.showVera('Vous avez trouvé son message. Écoutez-le quand vous serez prête.');
+    });
+  }
+
+  // === Hidden compartment flow ===
+
+  private mapStainedKnown(): boolean {
+    // Hardcoded hint reveal: player needs the carte fragment OR map_stained item.
+    return isCollected('ch3.map_stained') || hasItem('cle_atelier');
+  }
+
+  private handleHiddenCompartmentLook(): void {
+    if (hasProgress('ch3.compartment_opened')) {
+      this.showNarration('Le compartiment est ouvert. Vide à présent.');
+      return;
+    }
+    if (this.mapStainedKnown()) {
+      setProgress('ch3.compartment_revealed');
+      this.showNarration('Tu te souviens de la carte. C\'est ici qu\'IOLAS marquait un compartiment.');
+    } else {
+      this.showNarration('Un panneau de coque. Rien d\'apparent.');
+    }
+  }
+
+  private handleHiddenCompartmentUse(): void {
+    if (hasProgress('ch3.compartment_opened')) {
+      this.showNarration('Déjà ouvert.');
+      return;
+    }
+    if (!this.mapStainedKnown() || !hasProgress('ch3.compartment_revealed')) {
+      this.showNarration('Rien ne suggère qu\'on puisse l\'ouvrir.');
+      return;
+    }
+    const selected = this.inv.getSelected();
+    if (selected !== 'tournevis') {
+      this.showNarration('Le panneau est rivé. Il te faut un tournevis.');
+      return;
+    }
+    setProgress('ch3.compartment_opened');
+    addItem('graine_lumira');
+    this.collectFragment('ch3.secret_seed');
+    notifyInventoryChange();
+    playSfx('success');
+    this.showNarration('Tu dévisses le panneau. Une graine pulsante. Et un mot d\'IOLAS.');
+  }
+
+  // === Hull patch mini-puzzle ===
+
+  private startHullPatchPuzzle(): void {
+    if (hasProgress('ch3.hull_patched')) return;
+    new HullPatchPanel(this, {
+      onSuccess: () => {
+        setProgress('ch3.hull_patched');
+        // Collect the Vesper radio fragment if not already
+        if (!isCollected('ch3.radio_vesper')) {
+          this.collectFragment('ch3.radio_vesper');
+        }
+        playSfx('success');
+        this.showNarration('La coque est colmatée. Travail propre.');
+      },
+    });
+  }
+}
+
+// =====================================================================
+// HullPatchPanel — modal mini-puzzle: tap each button while it's lit.
+// 3 buttons (Patch / Souder / Sceller) light up sequentially with a ~1s
+// window each. Miss → retry. Success → onSuccess callback.
+// =====================================================================
+
+interface HullPatchOpts {
+  onSuccess: () => void;
+}
+
+class HullPatchPanel {
+  private scene: Phaser.Scene;
+  private opts: HullPatchOpts;
+  private root: Phaser.GameObjects.Container;
+  private buttons: Phaser.GameObjects.Rectangle[] = [];
+  private labels: Phaser.GameObjects.Text[] = [];
+  private currentStep = 0;
+  private litUntil = 0;
+  private litIdx = -1;
+  private status!: Phaser.GameObjects.Text;
+  private scheduled?: Phaser.Time.TimerEvent;
+  private updateLoop?: Phaser.Time.TimerEvent;
+  private finished = false;
+
+  constructor(scene: Phaser.Scene, opts: HullPatchOpts) {
+    this.scene = scene;
+    this.opts = opts;
+
+    this.root = scene.add.container(0, 0);
+    this.root.setDepth(2200);
+
+    // Backdrop blocks input
+    const backdrop = scene.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7).setOrigin(0);
+    backdrop.setInteractive();
+    backdrop.on('pointerdown', () => {});
+    this.root.add(backdrop);
+
+    // Modal panel
+    const panelW = 720;
+    const panelH = 460;
+    const px = (GAME_WIDTH - panelW) / 2;
+    const py = (GAME_HEIGHT - panelH) / 2;
+    const panel = scene.add.rectangle(px, py, panelW, panelH, COLORS.charDeep, 0.98).setOrigin(0);
+    panel.setStrokeStyle(3, COLORS.brass, 1);
+    this.root.add(panel);
+
+    // Title
+    const title = scene.add.text(GAME_WIDTH / 2, py + 40, 'COLMATAGE', {
+      fontFamily: FONTS.mono,
+      fontSize: '32px',
+      color: COLORS.hex.brass,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.root.add(title);
+
+    const sub = scene.add.text(GAME_WIDTH / 2, py + 80, 'Tape chaque bouton quand il s\'allume', {
+      fontFamily: FONTS.body,
+      fontSize: '22px',
+      color: COLORS.hex.cream,
+    }).setOrigin(0.5);
+    this.root.add(sub);
+
+    // 3 buttons
+    const labels = ['PATCH', 'SOUDER', 'SCELLER'];
+    const baseY = py + 220;
+    const spacing = 200;
+    labels.forEach((text, i) => {
+      const bx = GAME_WIDTH / 2 + (i - 1) * spacing;
+      const btn = scene.add.rectangle(bx, baseY, 160, 100, COLORS.brassDark, 1)
+        .setStrokeStyle(3, COLORS.brass, 1);
+      btn.setInteractive({ useHandCursor: true });
+      btn.on('pointerdown', () => this.onBtnTap(i));
+      this.buttons.push(btn);
+      const lab = scene.add.text(bx, baseY, text, {
+        fontFamily: FONTS.mono,
+        fontSize: '24px',
+        color: COLORS.hex.cream,
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.labels.push(lab);
+      this.root.add(btn);
+      this.root.add(lab);
+    });
+
+    // Status text
+    this.status = scene.add.text(GAME_WIDTH / 2, py + panelH - 100, 'Prépare-toi...', {
+      fontFamily: FONTS.body,
+      fontSize: '22px',
+      color: COLORS.hex.cream,
+    }).setOrigin(0.5);
+    this.root.add(this.status);
+
+    // Close (cancel) button
+    const closeBtn = scene.add.rectangle(GAME_WIDTH / 2, py + panelH - 50, 220, 60, COLORS.brassDark, 0.95)
+      .setStrokeStyle(2, COLORS.brass, 1);
+    closeBtn.setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.close());
+    const closeLab = scene.add.text(GAME_WIDTH / 2, py + panelH - 50, 'ABANDONNER', {
+      fontFamily: FONTS.mono,
+      fontSize: '20px',
+      color: COLORS.hex.cream,
+    }).setOrigin(0.5);
+    this.root.add(closeBtn);
+    this.root.add(closeLab);
+
+    // Start sequence after a short delay
+    this.scheduled = scene.time.delayedCall(800, () => this.runStep());
+
+    // Watch for window timeout
+    this.updateLoop = scene.time.addEvent({
+      delay: 100,
+      loop: true,
+      callback: () => this.tick(),
+    });
+  }
+
+  private runStep(): void {
+    if (this.finished) return;
+    if (this.currentStep >= 3) {
+      this.success();
+      return;
+    }
+    this.litIdx = this.currentStep;
+    this.litUntil = this.scene.time.now + 1000; // 1s window
+    const btn = this.buttons[this.litIdx];
+    btn.setFillStyle(COLORS.sunAmber, 1);
+    this.labels[this.litIdx].setColor(COLORS.hex.charDeep);
+    this.status.setText(`${this.currentStep + 1} / 3 — vas-y !`);
+  }
+
+  private tick(): void {
+    if (this.finished) return;
+    if (this.litIdx >= 0 && this.scene.time.now > this.litUntil) {
+      // Window expired
+      this.fail();
+    }
+  }
+
+  private onBtnTap(i: number): void {
+    if (this.finished) return;
+    playSfx('tap');
+    if (i === this.litIdx && this.scene.time.now <= this.litUntil) {
+      // Correct
+      this.resetButton(i);
+      this.litIdx = -1;
+      this.currentStep++;
+      this.scene.time.delayedCall(300, () => this.runStep());
+    } else {
+      this.fail();
+    }
+  }
+
+  private resetButton(i: number): void {
+    this.buttons[i].setFillStyle(COLORS.brassDark, 1);
+    this.labels[i].setColor(COLORS.hex.cream);
+  }
+
+  private fail(): void {
+    if (this.finished) return;
+    if (this.litIdx >= 0) this.resetButton(this.litIdx);
+    this.litIdx = -1;
+    this.currentStep = 0;
+    this.status.setText('Tu as raté un step. Réessaie.');
+    playSfx('fail');
+    this.scene.time.delayedCall(900, () => this.runStep());
+  }
+
+  private success(): void {
+    if (this.finished) return;
+    this.finished = true;
+    this.status.setText('Coque colmatée.');
+    this.scheduled?.remove(false);
+    this.updateLoop?.remove(false);
+    this.scene.time.delayedCall(700, () => {
+      this.opts.onSuccess();
+      this.destroy();
+    });
+  }
+
+  private close(): void {
+    if (this.finished) return;
+    this.finished = true;
+    this.scheduled?.remove(false);
+    this.updateLoop?.remove(false);
+    this.destroy();
+  }
+
+  private destroy(): void {
+    this.root.destroy(true);
   }
 }

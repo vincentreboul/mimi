@@ -7,6 +7,8 @@ import { VerbBar } from '../../objects/VerbBar';
 import { ActionLabel } from '../../objects/ActionLabel';
 import { TutorialOverlay } from '../../objects/TutorialOverlay';
 import { Hotspot } from '../../objects/Hotspot';
+import { Carnet } from '../../objects/Carnet';
+import { CarnetButton } from '../../objects/CarnetButton';
 import { hintConfig } from '../../data/puzzles';
 import { startPuzzle, endPuzzle, recordTap } from '../../systems/hint';
 import { setScene, setProgress, hasProgress, getPlayer, type ChapterId } from '../../systems/save';
@@ -15,6 +17,8 @@ import { t } from '../../systems/narrative';
 import { itemDesc, type ItemId } from '../../data/items';
 import { setActiveVerb, clearTarget } from '../../systems/verbs';
 import { ASSETS_BASE } from '../../data/assets';
+import { collectFragment } from '../../systems/fragments';
+import { markRecontextualization } from '../../systems/assertions';
 
 export abstract class PuzzleSceneBase extends Phaser.Scene {
   protected inv!: InventoryBar;
@@ -22,6 +26,8 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
   protected hintBtn!: HintButton;
   protected verbBar!: VerbBar;
   protected actionLabel!: ActionLabel;
+  protected carnet!: Carnet;
+  protected carnetButton!: CarnetButton;
   protected puzzleId!: string;
   protected chapter!: ChapterId;
   protected nextSceneKey: string = '';
@@ -80,6 +86,11 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
       });
     });
 
+    // Carnet button (top-right, left of Menu)
+    this.carnet = new Carnet(this, this.chapter);
+    const carnetX = GAME_WIDTH - 260;
+    this.carnetButton = new CarnetButton(this, carnetX, menuY, () => this.carnet.open());
+
     // HUD components (order matters for depth)
     this.dialogue = new DialogueBox(this);
     this.actionLabel = new ActionLabel(this);
@@ -90,6 +101,9 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
       onSkip: () => this.onSkip(),
       onHintGiven: (cue) => this.onHintCue(cue),
     });
+
+    // Mark chapter as visited (for Carte tab in Carnet)
+    setProgress(`chapter.${this.chapter}.visited`);
 
     // Listen to fallback events from hotspots / inventory
     this.events.on('hotspot-fallback', (e: { message: string }) => {
@@ -185,5 +199,49 @@ export abstract class PuzzleSceneBase extends Phaser.Scene {
 
   protected onSkip(): void {
     this.fadeToScene(this.nextSceneKey);
+  }
+
+  /**
+   * Add a carnet fragment to the player's collection. Shows a brief toast.
+   * Called by chapter scenes when narrative beats unlock evidence.
+   */
+  protected collectFragment(fragmentId: string): void {
+    const wasNew = collectFragment(fragmentId);
+    if (wasNew) {
+      // If we just collected the Ch4 confession, trigger recontextualization
+      if (fragmentId === 'ch4.confession_vera') {
+        markRecontextualization();
+      }
+      this.showFragmentToast();
+    }
+  }
+
+  private showFragmentToast(): void {
+    const toast = this.add.container(GAME_WIDTH / 2, 200);
+    toast.setDepth(2400);
+    const bg = this.add.rectangle(0, 0, 600, 100, COLORS.brass, 0.95).setStrokeStyle(3, COLORS.charDeep, 1);
+    const txt = this.add.text(0, 0, '+ FRAGMENT AJOUTÉ AU CARNET', {
+      fontFamily: FONTS.mono,
+      fontSize: '28px',
+      color: COLORS.hex.charDeep,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    toast.add([bg, txt]);
+    toast.setAlpha(0);
+    this.tweens.add({
+      targets: toast,
+      alpha: 1,
+      y: 230,
+      duration: 280,
+      ease: 'Cubic.easeOut',
+    });
+    this.time.delayedCall(2200, () => {
+      this.tweens.add({
+        targets: toast,
+        alpha: 0,
+        duration: 280,
+        onComplete: () => toast.destroy(true),
+      });
+    });
   }
 }

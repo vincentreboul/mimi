@@ -59,5 +59,8 @@ export const SOLUTIONS = {
   ch1Code: '1403',
   ch2Fert: ['fert_b', 'fert_c'] as ItemId[],
   ch3Circuit: ['comp_resistor', 'comp_capa', 'comp_diode', 'comp_led'] as ItemId[],
-  ch4Crystals: { left: 'cristal_a', right: 'cristal_b' } as Record<'left' | 'right', ItemId>,
+  ch4Crystals: { left: 'cristal_a', center: 'cristal_b', right: 'cristal_c' } as Record<
+    'left' | 'center' | 'right',
+    ItemId
+  >,
 };

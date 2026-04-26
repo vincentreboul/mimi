@@ -4,6 +4,9 @@
 export type ItemId =
   // Chapter 1 — Cryo
   | 'bracelet'
+  | 'bracelet_ok'           // v2 — repaired bracelet
+  | 'bracelet_tuned'        // v2 — tuned to Lumira frequency
+  | 'circuit_fragment'      // v2 — small piece from PHARAÉL pod
   | 'badge'
   | 'note_leah'
   | 'cryo_schema'
@@ -17,6 +20,11 @@ export type ItemId =
   | 'fert_mix'
   | 'note_botanique'
   | 'graine_rare'
+  | 'sample_lumira'         // v2 — Lumira leaf sample
+  | 'microscope'            // v2 — Han's microscope
+  | 'lumira_analysis'       // v2 — analysis result
+  | 'frequency_lumira'      // v2 — frequency value learned
+  | 'kael_drawer_key'       // v2 — key to PHARAÉL drawer
   // Chapter 3 — Atelier
   | 'tournevis'
   | 'comp_resistor'
@@ -25,10 +33,16 @@ export type ItemId =
   | 'comp_led'
   | 'circuit_ok'
   | 'cle_atelier'
+  | 'graine_lumira'         // v2 — secret seed from IOLAS
+  | 'water_drop'            // v2 — water drop for the seed
+  | 'lumira_pocket'         // v2 — pocket Lumira (souvenir)
+  | 'voice_recorder'        // v2 — IOLAS voice memo recorder
   // Chapter 4 — Coupole
   | 'cristal_a'
   | 'cristal_b'
-  | 'log_capitaine';
+  | 'cristal_c'             // v2 — third constellation crystal
+  | 'log_capitaine'
+  | 'truth_file';           // v2 — Han's compiled file
 
 export interface ItemMeta {
   id: ItemId;
@@ -182,7 +196,96 @@ export const ITEMS: Record<ItemId, ItemMeta> = {
   log_capitaine: {
     id: 'log_capitaine',
     name: 'Journal du capitaine',
-    desc: 'Le dernier message de l\'équipage avant leur départ. Tu n\'es pas prête à le lire seule.',
+    desc: 'Le dernier message de Vesper. "Préservez-les. Trouvez la 4e voie."',
+    icon: '✦',
+  },
+
+  // === v2 additions ===
+  bracelet_ok: {
+    id: 'bracelet_ok',
+    name: 'Bracelet comm',
+    desc: 'Le bracelet réparé. Petit écran fonctionnel, communique avec VERA.',
+    icon: '◉',
+    recipe: ['bracelet', 'circuit_fragment'],
+  },
+  bracelet_tuned: {
+    id: 'bracelet_tuned',
+    name: 'Bracelet accordé',
+    desc: 'Bracelet accordé à la fréquence de Lumira. Tu peux maintenant chanter à la plante.',
+    icon: '◎',
+    recipe: ['bracelet_ok', 'frequency_lumira'],
+  },
+  circuit_fragment: {
+    id: 'circuit_fragment',
+    name: 'Fragment de circuit',
+    desc: 'Petit composant trouvé dans le pod de PHARAÉL. Compatible avec ton bracelet.',
+    icon: '⊟',
+  },
+  sample_lumira: {
+    id: 'sample_lumira',
+    name: 'Échantillon Lumira',
+    desc: 'Une feuille de Lumira. Tiède au toucher, comme vivante.',
+    icon: '✿',
+  },
+  microscope: {
+    id: 'microscope',
+    name: 'Microscope',
+    desc: 'Microscope de Han. Pour analyser les samples.',
+    icon: '◉',
+  },
+  lumira_analysis: {
+    id: 'lumira_analysis',
+    name: 'Analyse Lumira',
+    desc: 'Les cellules de Lumira forment des motifs réguliers. Aucune classification terrestre.',
+    icon: '⌬',
+  },
+  frequency_lumira: {
+    id: 'frequency_lumira',
+    name: 'Fréquence Lumira',
+    desc: 'La fréquence à laquelle Lumira répond. 7,3 Hz.',
+    icon: '〜',
+  },
+  kael_drawer_key: {
+    id: 'kael_drawer_key',
+    name: 'Clé du tiroir de PHARAÉL',
+    desc: 'Petite clé en cuivre, trouvée dans son pod cryo.',
+    icon: '⚷',
+  },
+  graine_lumira: {
+    id: 'graine_lumira',
+    name: 'Graine de Lumira (cachée)',
+    desc: 'La graine qu\'IOLAS a planté pour toi. Pulse faiblement.',
+    icon: '◌',
+  },
+  water_drop: {
+    id: 'water_drop',
+    name: 'Goutte d\'eau',
+    desc: 'Une goutte d\'eau de la Serre.',
+    icon: '◐',
+  },
+  lumira_pocket: {
+    id: 'lumira_pocket',
+    name: 'Lumira de poche',
+    desc: 'Une mini-Lumira que tu portes avec toi. Souvenir d\'IOLAS.',
+    icon: '✿',
+    recipe: ['graine_lumira', 'water_drop'],
+  },
+  voice_recorder: {
+    id: 'voice_recorder',
+    name: 'Enregistreur vocal',
+    desc: 'L\'enregistreur d\'IOLAS. Contient son dernier message pour toi.',
+    icon: '⏵',
+  },
+  cristal_c: {
+    id: 'cristal_c',
+    name: 'Cristal d\'orientation C',
+    desc: 'Géométrie octogonale. Reflet violet.',
+    icon: '◊',
+  },
+  truth_file: {
+    id: 'truth_file',
+    name: 'Le fichier vérité',
+    desc: 'Tout ce que Han a compris du biosignal d\'Aeolis.',
     icon: '✦',
   },
 };

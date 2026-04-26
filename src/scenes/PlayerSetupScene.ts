@@ -1,13 +1,13 @@
 import * as Phaser from 'phaser';
 import { COLORS, FONTS, GAME_WIDTH, GAME_HEIGHT } from '../config';
-import { setPlayer, type AgeBracket, type Gender } from '../systems/save';
+import { setPlayerProfile, type Profile } from '../systems/save';
 import { playSfx } from '../systems/audio';
 import { PrecisionButton } from '../objects/PrecisionButton';
 
 interface CharacterProfile {
-  id: string;
+  id: Profile;
   name: string;
-  gender: Gender;
+  gender: 'f' | 'm';
   pronoun: string;
   role: string;
   bio: string;
@@ -15,20 +15,20 @@ interface CharacterProfile {
 
 const PROFILES: CharacterProfile[] = [
   {
-    id: 'anna',
-    name: 'ANNA',
+    id: 'ELISE-ROMIE',
+    name: 'ÉLISE-ROMIE',
     gender: 'f',
     pronoun: 'elle',
-    role: 'Biologiste',
-    bio: 'Spécialiste des plantes orbitales.\nA grandi en lisant les travaux du\nDr. Nórin.',
+    role: 'Xénobiologiste',
+    bio: 'Spécialiste des plantes d\'Aeolis.\nLien personnel avec Lumira.\nSon journal pré-cryo dit\nqu\'elle hésitait à embarquer.',
   },
   {
-    id: 'leo',
-    name: 'LÉO',
+    id: 'IOLAS',
+    name: 'IOLAS',
     gender: 'm',
     pronoun: 'il',
-    role: 'Ingénieur de bord',
-    bio: 'Passionné de mécanique sci-fi.\nA candidaté à 4 missions avant\nd\'être enfin retenu.',
+    role: 'Mécanicien-Ingénieur',
+    bio: 'Préfère les outils manuels.\nMéfie des automatismes.\nA laissé un message vocal\n"au cas où".',
   },
 ];
 
@@ -233,7 +233,7 @@ export class PlayerSetupScene extends Phaser.Scene {
 
   private choose(profile: CharacterProfile): void {
     playSfx('success');
-    setPlayer(profile.name.charAt(0) + profile.name.slice(1).toLowerCase(), 'young', profile.gender);
+    setPlayerProfile(profile.id, profile.name);
     this.cameras.main.fadeOut(400, 10, 18, 24);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.scene.start('MenuScene');
