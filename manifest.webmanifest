@@ -1,7 +1,7 @@
 {
-  "name": "Mimi — Le Jardin Suspendu",
-  "short_name": "Mimi",
-  "description": "Un escape game de science-fiction.",
+  "name": "KORA — L'éveil orbital",
+  "short_name": "KORA",
+  "description": "Un escape game spatial.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#1F4D3E",
